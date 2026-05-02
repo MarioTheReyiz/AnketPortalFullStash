@@ -8,5 +8,10 @@ namespace AnketPortal.UI.Controllers
         {
             return View();
         }
+        public IActionResult Detail(int id)
+        {
+            ViewBag.SurveyId = id; // Anket ID'sini sayfaya taşıyoruz
+            return View();
+        }
     }
 }

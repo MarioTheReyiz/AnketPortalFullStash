@@ -4,10 +4,8 @@
     {
         public int SurveyId { get; set; }
         public string Text { get; set; } = string.Empty;
-        public int Type { get; set; } // 1: Text, 2: MultipleChoice, 3: Checkbox
+        public int Type { get; set; } // 1: Metin, 2: Seçmeli, 3: Checkbox
         public bool IsRequired { get; set; }
-
-        // Çoktan seçmeli ise şıklar sadece metin (string) olarak gelecek
-        public List<string> Options { get; set; } = new();
+        public List<string> Options { get; set; } = new(); // Şıkların sadece metinleri
     }
 }

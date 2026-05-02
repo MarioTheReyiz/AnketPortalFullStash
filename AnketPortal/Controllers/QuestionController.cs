@@ -4,26 +4,22 @@ using AnketPortal.API.Models;
 using AnketPortal.API.Models.Enums;
 using Microsoft.AspNetCore.Authorization;
 using Microsoft.AspNetCore.Mvc;
+using Microsoft.EntityFrameworkCore;
 
 namespace AnketPortal.API.Controllers
 {
     [Route("api/[controller]")]
     [ApiController]
-    [Authorize] // Sadece giriş yapan adminler soru ekleyebilir
+    [Authorize]
     public class QuestionController : ControllerBase
     {
         private readonly AppDbContext _context;
-
-        public QuestionController(AppDbContext context)
-        {
-            _context = context;
-        }
+        public QuestionController(AppDbContext context) => _context = context;
 
         [HttpPost("AddQuestion")]
-        public IActionResult AddQuestion(QuestionCreateDto model)
+        public async Task<IActionResult> AddQuestion(QuestionCreateDto model)
         {
-            // 1. Soruyu Oluştur (Gelen int Type'ı Enum'a çeviriyoruz)
-            var newQuestion = new Question
+            var question = new Question
             {
                 SurveyId = model.SurveyId,
                 Text = model.Text,
@@ -31,47 +27,32 @@ namespace AnketPortal.API.Controllers
                 IsRequired = model.IsRequired
             };
 
-            // 2. Eğer soru metin değilse (Seçmeli veya Onay Kutusuysa) şıkları ekle
-            if (model.Type != 1 && model.Options != null && model.Options.Count > 0)
+            if (model.Type != 1 && model.Options != null)
             {
                 for (int i = 0; i < model.Options.Count; i++)
                 {
-                    newQuestion.Options.Add(new QuestionOption
-                    {
-                        OptionText = model.Options[i],
-                        Order = i + 1 // 1, 2, 3 diye sıralansın
-                    });
+                    question.Options.Add(new QuestionOption { OptionText = model.Options[i], Order = i + 1 });
                 }
             }
-
-            // 3. Veritabanına kaydet
-            _context.Questions.Add(newQuestion);
-            _context.SaveChanges();
-
-            return Ok(new ResultDto { Status = true, Message = "Soru başarıyla eklendi." });
+            _context.Questions.Add(question);
+            await _context.SaveChangesAsync();
+            return Ok(new ResultDto { Status = true, Message = "Soru kaydedildi." });
         }
-        [HttpGet("GetQuestions/{surveyId}")]
-        public IActionResult GetQuestions(int surveyId)
-        {
-            // İlgili anketin sorularını ve o sorulara ait şıkları veritabanından çekiyoruz
-            var questions = _context.Questions
-                .Where(q => q.SurveyId == surveyId)
-                .Select(q => new
-                {
-                    q.Id,
-                    q.Text,
-                    q.Type,
-                    q.IsRequired,
-                    // Şıkları sırasına (Order) göre dizip alıyoruz
-                    Options = q.Options.OrderBy(o => o.Order).Select(o => new
-                    {
-                        o.Id,
-                        o.OptionText
-                    }).ToList()
-                })
-                .ToList();
 
-            return Ok(new ResultDto { Status = true, Message = "Sorular listelendi", Data = questions });
+        [HttpGet("GetBySurvey/{surveyId}")]
+        public async Task<IActionResult> GetBySurvey(int surveyId)
+        {
+            var questions = await _context.Questions.Include(q => q.Options)
+                .Where(q => q.SurveyId == surveyId)
+                .Select(q => new QuestionDto
+                {
+                    Id = q.Id,
+                    Text = q.Text,
+                    Type = (int)q.Type,
+                    IsRequired = q.IsRequired,
+                    Options = q.Options.Select(o => new OptionDto { Id = o.Id, OptionText = o.OptionText, Order = o.Order }).OrderBy(o => o.Order).ToList()
+                }).ToListAsync();
+            return Ok(new ResultDto { Status = true, Data = questions });
         }
     }
 }
