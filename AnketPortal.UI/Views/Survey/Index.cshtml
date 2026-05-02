@@ -317,20 +317,30 @@
                 });
             });
 
-            // 7. DURUM DEĞİŞTİRME (TOGGLE SWITCH - AKTİF/PASİF)
+           // 7. DURUM DEĞİŞTİRME (TOGGLE SWITCH - AKTİF/PASİF ANLIK GÜNCELLEME)
             $(document).on("change", ".form-check-input.status-toggle", function () {
                 var isChecked = $(this).is(":checked");
                 var surveyId = $(this).data("id");
                 var token = localStorage.getItem("token");
+                var switchElement = $(this); // Hata olursa geri almak için
 
-                const Toast = Swal.mixin({ toast: true, position: 'top-end', showConfirmButton: false, timer: 2000, timerProgressBar: true });
-
-                Toast.fire({
-                    icon: 'success',
-                    title: isChecked ? 'Anket Aktif Edildi' : 'Anket Pasife Alındı'
+                $.ajax({
+                    url: "https://localhost:7094/api/Survey/ToggleActive/" + surveyId,
+                    type: "PUT",
+                    headers: { "Authorization": "Bearer " + token },
+                    success: function (response) {
+                        const Toast = Swal.mixin({ toast: true, position: 'top-end', showConfirmButton: false, timer: 2000, timerProgressBar: true });
+                        Toast.fire({
+                            icon: 'success',
+                            title: response.message // API'den gelen Aktif/Pasif mesajını ekrana basar
+                        });
+                    },
+                    error: function () {
+                        // Eğer sunucuda hata olursa veya yetkisi yoksa, butonu tıklandığı halden eski haline geri at!
+                        switchElement.prop("checked", !isChecked);
+                        Swal.fire('Hata', 'Durum güncellenemedi. Sunucuya ulaşılamıyor.', 'error');
+                    }
                 });
-
-                // NOT: API'nde UpdateStatus metodu yazdığında, buraya ufak bir AJAX eklenebilir.
             });
 
             // 8. TABLOYU DOLDURAN ANA FONKSİYON (GET)
