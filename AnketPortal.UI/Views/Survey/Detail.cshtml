@@ -1,0 +1,252 @@
+﻿@{
+    ViewData["Title"] = "Anket Soruları";
+    // Bu sayfaya gelen anketin ID'si (Controller'dan ViewBag ile de yollayabilirsin)
+    var surveyId = ViewContext.RouteData.Values["id"];
+}
+
+<div class="container mt-4">
+    <div class="d-flex justify-content-between align-items-center mb-4">
+        <h2 class="h4 text-gray-800"><i class="fa-solid fa-list-check"></i> Soru Yönetimi</h2>
+        <button class="btn btn-primary" data-bs-toggle="modal" data-bs-target="#questionModal">
+            <i class="fa fa-plus"></i> Yeni Soru Ekle
+        </button>
+    </div>
+
+    <!-- Soruların Listeleneceği Yer (Daha sonra buraya API'den verileri çekeceğiz) -->
+    <div class="card shadow">
+        <div class="card-body">
+            <p class="text-muted">Bu ankete henüz soru eklenmemiş.</p>
+        </div>
+    </div>
+</div>
+
+<!-- SORU EKLEME MODALI -->
+<div class="modal fade" id="questionModal" tabindex="-1">
+    <div class="modal-dialog modal-lg">
+        <div class="modal-content">
+            <div class="modal-header bg-primary text-white">
+                <h5 class="modal-title">Yeni Soru Ekle</h5>
+                <button type="button" class="btn-close btn-close-white" data-bs-dismiss="modal"></button>
+            </div>
+            <div class="modal-body">
+                <form id="frmQuestion" onsubmit="return false;">
+                    <input type="hidden" id="hdnSurveyId" value="@surveyId" />
+
+                    <div class="mb-3">
+                        <label class="form-label fw-bold">Soru Metni</label>
+                        <input type="text" class="form-control" id="txtQuestionText" placeholder="Sorduğunuz soruyu buraya yazın..." required>
+                    </div>
+
+                    <div class="row mb-3">
+                        <div class="col-md-6">
+                            <label class="form-label fw-bold">Soru Tipi</label>
+                            <select class="form-select" id="cbQuestionType">
+                                <option value="1">Kısa Metin (Açık Uçlu)</option>
+                                <option value="2">Tek Seçim (Radio Button)</option>
+                                <option value="3">Çoklu Seçim (Checkbox)</option>
+                            </select>
+                        </div>
+                        <div class="col-md-6 d-flex align-items-end pb-1">
+                            <div class="form-check form-switch fs-5">
+                                <input class="form-check-input" type="checkbox" id="chkIsRequired" checked>
+                                <label class="form-check-label ms-2 fs-6">Bu soru zorunlu mu?</label>
+                            </div>
+                        </div>
+                    </div>
+
+                    <!-- ŞIK EKLEME BÖLÜMÜ (Başlangıçta Gizli) -->
+                    <div id="optionsArea" style="display:none;" class="p-3 bg-light border rounded">
+                        <div class="d-flex justify-content-between align-items-center mb-3">
+                            <label class="form-label fw-bold mb-0 text-primary"><i class="fa fa-list"></i> Şıkları Belirleyin</label>
+                            <button type="button" class="btn btn-sm btn-success" id="btnAddOption">
+                                <i class="fa fa-plus"></i> Şık Ekle
+                            </button>
+                        </div>
+                        <div id="optionsContainer">
+                            <!-- JS ile buraya otomatik inputlar gelecek -->
+                        </div>
+                    </div>
+                </form>
+            </div>
+            <div class="modal-footer">
+                <button type="button" class="btn btn-secondary" data-bs-dismiss="modal">İptal</button>
+                <button type="button" class="btn btn-primary" id="btnSaveQuestion">Soruyu Kaydet</button>
+            </div>
+        </div>
+    </div>
+</div>
+
+@section Scripts {
+    <script>
+        $(document).ready(function () {
+
+            // Sayfa açıldığında soruları getir
+            loadQuestions();
+
+            function loadQuestions() {
+                var surveyId = $("#hdnSurveyId").val();
+
+                $.ajax({
+                    url: "https://localhost:7094/api/Question/GetQuestions/" + surveyId, // Portunu kontrol et!
+                    type: "GET",
+                    success: function (res) {
+                        if (res.status && res.data.length > 0) {
+                            var html = "";
+
+                            // Gelen her bir soruyu dön
+                            res.data.forEach(function (q, index) {
+                                // Soru tipinin adını belirle
+                                var typeName = q.type == 1 ? "Kısa Metin" : (q.type == 2 ? "Tek Seçim (Radio)" : "Çoklu Seçim (Checkbox)");
+
+                                // Zorunluysa yanına kırmızı rozet at
+                                var requiredBadge = q.isRequired ? '<span class="badge bg-danger ms-2">Zorunlu</span>' : '';
+
+                                html += `
+                                <div class="card mb-3 border-left-primary shadow-sm">
+                                    <div class="card-body">
+                                        <div class="d-flex justify-content-between align-items-center mb-2">
+                                            <h5 class="card-title fw-bold mb-0">${index + 1}. ${q.text} ${requiredBadge}</h5>
+                                            <div>
+                                                <span class="badge bg-info text-dark me-2">${typeName}</span>
+                                                <button class="btn btn-sm btn-outline-danger btn-delete-question" data-id="${q.id}">
+                                                    <i class="fa fa-trash"></i>
+                                                </button>
+                                            </div>
+                                        </div>`;
+
+                                // Eğer soru seçmeliyse şıkları liste halinde çiz
+                                if (q.type != 1 && q.options.length > 0) {
+                                    html += `<ul class="list-group mt-3">`;
+                                    q.options.forEach(function (opt) {
+                                        // Radio ve Checkbox için farklı ikonlar
+                                        var icon = q.type == 2 ? "fa-circle-dot" : "fa-square-check";
+                                        html += `<li class="list-group-item"><i class="fa-regular ${icon} text-secondary me-2"></i> ${opt.optionText}</li>`;
+                                    });
+                                    html += `</ul>`;
+                                }
+                                // Metin sorusuysa temsili bir input koy
+                                else if (q.type == 1) {
+                                    html += `<div class="mt-3"><input type="text" class="form-control" placeholder="Kullanıcı buraya metin girecek..." disabled></div>`;
+                                }
+
+                                html += `</div></div>`;
+                            });
+
+                            // Oluşturulan HTML'i ekrana bas
+                            $("#questionsList").html(html);
+                        } else {
+                            $("#questionsList").html('<p class="text-muted">Bu ankete henüz soru eklenmemiş.</p>');
+                        }
+                    },
+                    error: function() {
+                        console.error("Sorular yüklenirken hata oluştu.");
+                    }
+                });
+            }
+
+            // 1. Soru Tipi Değiştiğinde Animasyonlu Şık Alanı Yönetimi
+            $("#cbQuestionType").change(function () {
+                var type = $(this).val();
+                if (type == "1") {
+                    $("#optionsArea").slideUp();
+                    $("#optionsContainer").empty();
+                } else {
+                    $("#optionsArea").slideDown();
+                    // Eğer hiç şık yoksa otomatik 2 tane boş şık ekle
+                    if ($("#optionsContainer .option-row").length === 0) {
+                        addOptionInput();
+                        addOptionInput();
+                    }
+                }
+            });
+
+            // 2. Yeni Şık Ekle Butonu
+            $("#btnAddOption").click(function () {
+                addOptionInput();
+            });
+
+            // 3. Şık Silme İşlemi (Dinamik elementler için .on kullanılır)
+            $("#optionsContainer").on("click", ".btn-remove-option", function () {
+                if($(".option-row").length > 2){
+                    $(this).closest(".option-row").remove();
+                } else {
+                    Swal.fire('Uyarı', 'Seçmeli sorularda en az 2 şık olmalıdır!', 'warning');
+                }
+            });
+
+            // Şık Input HTML'i
+            function addOptionInput() {
+                var html = `
+                    <div class="input-group mb-2 option-row">
+                        <span class="input-group-text bg-white"><i class="fa fa-check-circle text-success"></i></span>
+                        <input type="text" class="form-control option-input" placeholder="Şık metnini yazın...">
+                        <button class="btn btn-outline-danger btn-remove-option" type="button"><i class="fa fa-trash"></i></button>
+                    </div>`;
+                $("#optionsContainer").append(html);
+            }
+
+            // 4. API'ye Kaydetme İşlemi
+            $("#btnSaveQuestion").click(function () {
+                var surveyId = $("#hdnSurveyId").val();
+                var text = $("#txtQuestionText").val();
+                var type = $("#cbQuestionType").val();
+                var isRequired = $("#chkIsRequired").is(":checked");
+
+                var options = [];
+
+                if(!text) {
+                    Swal.fire("Eksik", "Lütfen soru metnini yazın.", "warning");
+                    return;
+                }
+
+                // Tip 2 veya 3 ise ekrandaki inputları diziye doldur
+                if (type != "1") {
+                    $(".option-input").each(function () {
+                        var val = $(this).val().trim();
+                        if (val !== "") {
+                            options.push(val);
+                        }
+                    });
+
+                    if (options.length < 2) {
+                        Swal.fire("Eksik", "Çoktan seçmeli sorular için en az 2 dolu şık girmelisiniz!", "warning");
+                        return;
+                    }
+                }
+
+                // API'nin beklediği paket (JSON)
+                var payload = {
+                    SurveyId: parseInt(surveyId),
+                    Text: text,
+                    Type: parseInt(type),
+                    IsRequired: isRequired,
+                    Options: options
+                };
+
+                $("#btnSaveQuestion").prop("disabled", true).text("Kaydediliyor...");
+
+                $.ajax({
+                    url: "https://localhost:7094/api/Question/AddQuestion",
+                    type: "POST",
+                    contentType: "application/json",
+                    data: JSON.stringify(payload),
+                    success: function (res) {
+                        if(res.status){
+                            Swal.fire("Başarılı!", res.message, "success").then(() => {
+                                location.reload();
+                            });
+                        } else {
+                            Swal.fire("Hata", res.message, "error");
+                            $("#btnSaveQuestion").prop("disabled", false).text("Soruyu Kaydet");
+                        }
+                    },
+                    error: function (xhr) {
+                        Swal.fire("Hata", "İşlem sırasında bir hata oluştu.", "error");
+                        $("#btnSaveQuestion").prop("disabled", false).text("Soruyu Kaydet");
+                    }
+                });
+            });
+
+        });
+    </script>
+}
