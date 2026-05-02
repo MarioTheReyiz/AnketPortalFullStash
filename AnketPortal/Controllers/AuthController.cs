@@ -1,9 +1,10 @@
 ﻿using AnketPortal.API.DTOs;
 using AnketPortal.API.Models;
-using AnketPortal.API.Repositories;
+using AnketPortal.API.Services;
 using Microsoft.AspNetCore.Authorization;
 using Microsoft.AspNetCore.Identity;
 using Microsoft.AspNetCore.Mvc;
+using Microsoft.EntityFrameworkCore;
 
 namespace AnketPortal.API.Controllers
 {
@@ -30,7 +31,6 @@ namespace AnketPortal.API.Controllers
 
             if (result.Succeeded)
             {
-                
                 string[] roles = { "SuperAdmin", "Admin", "User" };
                 foreach (var role in roles)
                 {
@@ -55,15 +55,21 @@ namespace AnketPortal.API.Controllers
             if (user != null && await _userManager.CheckPasswordAsync(user, model.Password))
             {
                 var roles = await _userManager.GetRolesAsync(user);
-                var token = _tokenService.GenerateToken(user, roles);
-                return Ok(new ResultDto { Status = true, Message = "Giriş Başarılı", Data = token });
+
+                // Jeton paketini oluştur (AccessToken + RefreshToken + Expiration)
+                var tokenResponse = _tokenService.GenerateToken(user, roles);
+
+                // --- ÖNEMLİ: Refresh Token bilgilerini veritabanına işle ---
+                user.RefreshToken = tokenResponse.RefreshToken;
+                user.RefreshTokenEndDate = DateTime.Now.AddDays(7); // 7 gün boyunca şifresiz yenileyebilir
+                await _userManager.UpdateAsync(user);
+
+                return Ok(new ResultDto { Status = true, Message = "Giriş Başarılı", Data = tokenResponse });
             }
             return Unauthorized(new ResultDto { Status = false, Message = "Kullanıcı adı veya şifre hatalı" });
         }
 
-        
         [Authorize(Roles = "SuperAdmin")] // Yetki Atama API'si
-        [HttpPost("AssignRole")]
         public async Task<IActionResult> AssignRole(RoleAssignDto model)
         {
             var user = await _userManager.FindByNameAsync(model.UserName);
@@ -72,13 +78,34 @@ namespace AnketPortal.API.Controllers
             if (!await _roleManager.RoleExistsAsync(model.RoleName))
                 return BadRequest(new ResultDto { Status = false, Message = "Böyle bir rol sistemde yok." });
 
-            // Kullanıcıya yetkiyi ver
             var result = await _userManager.AddToRoleAsync(user, model.RoleName);
 
             if (result.Succeeded)
                 return Ok(new ResultDto { Status = true, Message = $"{user.UserName} adlı kullanıcıya '{model.RoleName}' yetkisi verildi." });
 
             return BadRequest(new ResultDto { Status = false, Message = "Yetki verilemedi.", Data = result.Errors });
+        }
+
+        [HttpPost("RefreshToken")] // Jeton Yenileme API'si
+        public async Task<IActionResult> RefreshToken([FromBody] string refreshToken)
+        {
+            // Veritabanında bu refresh token'a sahip kullanıcıyı bul
+            var user = await _userManager.Users.FirstOrDefaultAsync(u => u.RefreshToken == refreshToken);
+
+            if (user == null || user.RefreshTokenEndDate < DateTime.Now)
+                return Unauthorized(new ResultDto { Status = false, Message = "Oturum süresi dolmuş veya geçersiz jeton. Lütfen tekrar giriş yapın." });
+
+            var roles = await _userManager.GetRolesAsync(user);
+
+            // Yeni jetonları üret (Metot ismini GenerateToken olarak düzelttim)
+            var tokenResponse = _tokenService.GenerateToken(user, roles);
+
+            // Veritabanındaki refresh token bilgilerini tazele
+            user.RefreshToken = tokenResponse.RefreshToken;
+            user.RefreshTokenEndDate = DateTime.Now.AddDays(7);
+            await _userManager.UpdateAsync(user);
+
+            return Ok(new ResultDto { Status = true, Message = "Jeton başarıyla yenilendi", Data = tokenResponse });
         }
     }
 }

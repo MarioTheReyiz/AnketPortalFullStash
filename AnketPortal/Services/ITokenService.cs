@@ -1,9 +1,10 @@
-﻿using AnketPortal.API.Models;
+﻿using AnketPortal.API.DTOs;
+using AnketPortal.API.Models;
 
-namespace AnketPortal.API.Repositories
+namespace AnketPortal.API.Services
 {
     public interface ITokenService
     {
-        string GenerateToken(AppUser user, IList<string> roles);
+        TokenResponseDto GenerateToken(AppUser user, IList<string> roles);
     }
 }
