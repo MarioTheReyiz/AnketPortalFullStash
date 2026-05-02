@@ -168,7 +168,7 @@
                 var description = $("#txtDescription").val().trim();
                 var endDate = $("#txtEndDate").val();
 
-                // Switch ve Select verilerini alıyoruz (True/False)
+                // GÜVENLİK DOKUNUŞU: Switch ve Select'ten gelen değerleri Boolean yapıyoruz!
                 var isActive = $("#chkNewIsActive").is(":checked");
                 var isPublic = $("#cmbIsPublic").val() === "true";
 
@@ -212,6 +212,7 @@
                         }
                     },
                     error: function (xhr) {
+                        console.log(xhr.responseText);
                         btn.prop("disabled", false).html('<i class="fa-solid fa-floppy-disk me-1"></i> Kaydet');
                         Swal.fire('Sunucu Hatası', 'Anket eklenirken bir sorun oluştu.', 'error');
                     }
@@ -257,7 +258,7 @@
                 $("#txtEditTitle").val(btn.data("title"));
                 $("#txtEditDescription").val(btn.data("desc"));
 
-                // Görünürlük ayarını Select'e yansıt
+                // Görünürlük ayarını Select'e yansıt (True/False to String)
                 var isPublic = btn.data("public") === true || btn.data("public") === "true";
                 $("#cmbEditIsPublic").val(isPublic.toString());
 
@@ -279,6 +280,8 @@
                 var title = $("#txtEditTitle").val().trim();
                 var desc = $("#txtEditDescription").val().trim();
                 var endDate = $("#txtEditEndDate").val();
+
+                // String'i Boolean'a çeviriyoruz
                 var isPublic = $("#cmbEditIsPublic").val() === "true";
 
                 if (title === "" || endDate === "") {
@@ -302,22 +305,28 @@
                     type: "PUT",
                     contentType: "application/json",
                     headers: { "Authorization": "Bearer " + token },
-                    // IsPublic değerini de güncelliyoruz (IsActive switch'ten geldiği için burada dokunmadım)
-                    data: JSON.stringify({ Id: id, Title: title, Description: desc, EndDate: endDate, IsPublic: isPublic }),
+                    data: JSON.stringify({
+                        Id: id,
+                        Title: title,
+                        Description: desc,
+                        EndDate: endDate,
+                        IsPublic: isPublic
+                    }),
                     success: function (response) {
                         btn.prop("disabled", false).html('<i class="fa-solid fa-arrows-rotate me-1"></i> Güncelle');
                         $("#editSurveyModal").modal("hide");
                         Swal.fire('Başarılı', 'Anket güncellendi.', 'success');
                         LoadSurveys();
                     },
-                    error: function () {
+                    error: function (xhr) {
+                        console.log(xhr.responseText);
                         btn.prop("disabled", false).html('<i class="fa-solid fa-arrows-rotate me-1"></i> Güncelle');
                         Swal.fire('Hata', 'Güncelleme başarısız oldu.', 'error');
                     }
                 });
             });
 
-           // 7. DURUM DEĞİŞTİRME (TOGGLE SWITCH - AKTİF/PASİF ANLIK GÜNCELLEME)
+            // 7. DURUM DEĞİŞTİRME (TOGGLE SWITCH - AKTİF/PASİF ANLIK GÜNCELLEME)
             $(document).on("change", ".form-check-input.status-toggle", function () {
                 var isChecked = $(this).is(":checked");
                 var surveyId = $(this).data("id");
@@ -332,7 +341,7 @@
                         const Toast = Swal.mixin({ toast: true, position: 'top-end', showConfirmButton: false, timer: 2000, timerProgressBar: true });
                         Toast.fire({
                             icon: 'success',
-                            title: response.message // API'den gelen Aktif/Pasif mesajını ekrana basar
+                            title: response.message
                         });
                     },
                     error: function () {
@@ -396,7 +405,7 @@
                                     <td class="text-center">${publicBadge}</td>
                                     <td class="text-center align-middle">${statusSwitch}</td>
                                     <td class="text-center">
-                                        <a href="/Survey/Detail/${survey.id}" class="btn btn-sm btn-primary shadow-sm" title="Soruları Yönet"><i class="fa-solid fa-gear"></i></a>
+                                        <a href="/Survey/Detail/${survey.id}" class="btn btn-sm btn-primary shadow-sm" title="Soruları Yönet"><i class="fa-solid fa-gear"></i> Detay</a>
                                         <button class="btn btn-sm btn-warning text-dark btn-edit shadow-sm ms-1" title="Düzenle"
                                             data-id="${survey.id}"
                                             data-title="${survey.title}"

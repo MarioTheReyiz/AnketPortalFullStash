@@ -26,6 +26,7 @@ namespace AnketPortal.API.Controllers
             _optionRepo = optionRepo;
         }
 
+        // Aktif Anketleri Listeleme ve Arama (GÜNCELLENDİ: Yönetici her şeyi görebilir ve eksik veriler eklendi)
         [HttpGet]
         public async Task<IActionResult> GetSurveys(string? search = null)
         {
@@ -43,14 +44,14 @@ namespace AnketPortal.API.Controllers
                 Title = s.Title,
                 Description = s.Description,
                 CreatedDate = s.CreatedDate,
-                EndDate = s.EndDate,       // EŞLEŞTİRME EKLENDİ
-                IsActive = s.IsActive,     // EŞLEŞTİRME EKLENDİ
-                IsPublic = s.IsPublic      // EŞLEŞTİRME EKLENDİ
+                EndDate = s.EndDate,
+                IsActive = s.IsActive,
+                IsPublic = s.IsPublic
             });
             return Ok(result);
         }
 
-        //Anket Detaylarını Getirme
+        // Anket Detaylarını Getirme
         [HttpGet("{id}")]
         public async Task<IActionResult> GetSurveyById(int id)
         {
@@ -65,8 +66,7 @@ namespace AnketPortal.API.Controllers
             return Ok(survey);
         }
 
-        //  Yeni Anket Oluşturma
-        // Yeni Anket Oluşturma
+        // Yeni Anket Oluşturma (GÜNCELLENDİ: IsActive ve IsPublic eklendi)
         [Authorize(Roles = "Admin,SuperAdmin")]
         [HttpPost]
         public async Task<IActionResult> CreateSurvey(SurveyCreateDto model)
@@ -80,7 +80,6 @@ namespace AnketPortal.API.Controllers
                 EndDate = model.EndDate,
                 AppUserId = userId!,
                 CreatedDate = DateTime.Now,
-                // İŞTE EKSİK OLAN VE SENİ ÇILDIRTAN İKİ SATIR BURASI:
                 IsActive = model.IsActive,
                 IsPublic = model.IsPublic
             };
@@ -91,8 +90,7 @@ namespace AnketPortal.API.Controllers
             return Ok(new ResultDto { Status = true, Message = "Anket başarıyla oluşturuldu." });
         }
 
-        // Anket Güncelleme
-        // Anket Güncelleme
+        // Anket Güncelleme (GÜNCELLENDİ: EndDate ve IsPublic eklendi)
         [Authorize(Roles = "Admin,SuperAdmin")]
         [HttpPut]
         public async Task<IActionResult> UpdateSurvey(SurveyDto model)
@@ -102,7 +100,6 @@ namespace AnketPortal.API.Controllers
 
             survey.Title = model.Title;
             survey.Description = model.Description;
-            // İŞTE EKSİK OLAN YİNE BURASI:
             survey.EndDate = model.EndDate;
             survey.IsPublic = model.IsPublic;
 
@@ -112,7 +109,24 @@ namespace AnketPortal.API.Controllers
             return Ok(new ResultDto { Status = true, Message = "Anket başarıyla güncellendi." });
         }
 
-        // Ankete Soru Ekleme
+        // --- YENİ: Anlık Durum Değiştirme (Switch Butonu İçin) ---
+        [Authorize(Roles = "Admin,SuperAdmin")]
+        [HttpPut("ToggleActive/{id}")]
+        public async Task<IActionResult> ToggleActiveStatus(int id)
+        {
+            var survey = await _surveyRepo.GetByIdAsync(id);
+            if (survey == null) return NotFound(new ResultDto { Status = false, Message = "Anket bulunamadı." });
+
+            // Durumu tersine çevir (True ise False, False ise True yap)
+            survey.IsActive = !survey.IsActive;
+
+            _surveyRepo.Update(survey);
+            await _surveyRepo.SaveAsync();
+
+            return Ok(new ResultDto { Status = true, Message = survey.IsActive ? "Anket Aktif edildi." : "Anket Pasife alındı." });
+        }
+
+        // Ankete Soru Ekleme (ORİJİNAL HALİYLE DURUYOR)
         [Authorize(Roles = "Admin,SuperAdmin")]
         [HttpPost("AddQuestion")]
         public async Task<IActionResult> AddQuestion(QuestionDto model)
@@ -132,7 +146,7 @@ namespace AnketPortal.API.Controllers
             return Ok(new ResultDto { Status = true, Message = "Soru başarıyla eklendi." });
         }
 
-        //  Soruya Şık  Ekleme
+        // Soruya Şık Ekleme (ORİJİNAL HALİYLE DURUYOR)
         [Authorize(Roles = "Admin,SuperAdmin")]
         [HttpPost("AddOption")]
         public async Task<IActionResult> AddOption(OptionCreateDto model)
@@ -151,7 +165,7 @@ namespace AnketPortal.API.Controllers
             return Ok(new ResultDto { Status = true, Message = "Şık başarıyla eklendi." });
         }
 
-        // Anket Sonuçları
+        // Anket Sonuçları (ORİJİNAL HALİYLE DURUYOR)
         [Authorize(Roles = "Admin,SuperAdmin")]
         [HttpGet("{id}/Results")]
         public async Task<IActionResult> GetSurveyResults(int id)
@@ -159,7 +173,7 @@ namespace AnketPortal.API.Controllers
             return Ok(new ResultDto { Status = true, Message = $"{id} numaralı anketin sonuçları derleniyor. (İstatistikler Final projesinde aktif edilecek)" });
         }
 
-        //  Anket Silme (Soft Delete)
+        // Anket Silme (Soft Delete) (ORİJİNAL HALİYLE DURUYOR)
         [Authorize(Roles = "Admin,SuperAdmin")]
         [HttpDelete("{id}")]
         public async Task<IActionResult> DeleteSurvey(int id)
@@ -174,7 +188,7 @@ namespace AnketPortal.API.Controllers
             return Ok(new ResultDto { Status = true, Message = "Anket başarıyla silindi (pasife alındı)." });
         }
 
-        // Veritabanından fiziksel olarak sil (Hard Delete)
+        // Veritabanından fiziksel olarak sil (Hard Delete) (ORİJİNAL HALİYLE DURUYOR)
         [Authorize(Roles = "SuperAdmin")]
         [HttpDelete("{id}/HardDelete")]
         public async Task<IActionResult> HardDeleteSurvey(int id)
@@ -183,27 +197,10 @@ namespace AnketPortal.API.Controllers
             if (survey == null)
                 return NotFound(new ResultDto { Status = false, Message = "Silinecek anket bulunamadı." });
 
-            
             _surveyRepo.Delete(survey);
             await _surveyRepo.SaveAsync();
 
             return Ok(new ResultDto { Status = true, Message = "Anket ve ona bağlı tüm veriler veritabanından kalıcı olarak silindi!" });
-        }
-        // Anlık Durum Değiştirme (Switch Butonu İçin)
-        [Authorize(Roles = "Admin,SuperAdmin")]
-        [HttpPut("ToggleActive/{id}")]
-        public async Task<IActionResult> ToggleActiveStatus(int id)
-        {
-            var survey = await _surveyRepo.GetByIdAsync(id);
-            if (survey == null) return NotFound(new ResultDto { Status = false, Message = "Anket bulunamadı." });
-
-            // Durumu tersine çevir (True ise False, False ise True yap)
-            survey.IsActive = !survey.IsActive;
-
-            _surveyRepo.Update(survey);
-            await _surveyRepo.SaveAsync();
-
-            return Ok(new ResultDto { Status = true, Message = survey.IsActive ? "Anket Aktif edildi." : "Anket Pasife alındı." });
         }
     }
 }

@@ -17,16 +17,21 @@ namespace AnketPortal.API.Data
 
         protected override void OnModelCreating(ModelBuilder builder)
         {
-            
             base.OnModelCreating(builder);
 
-
-            // Soru silindiğinde ona bağlı cevapları otomatik silme
+            // 1. Soru silindiğinde cevaplar silinsin (Şelale - Cascade)
             builder.Entity<SurveyAnswer>()
                 .HasOne(sa => sa.Question)
                 .WithMany()
                 .HasForeignKey(sa => sa.QuestionId)
                 .OnDelete(DeleteBehavior.Cascade);
+
+            // 2. KÖRDÜĞÜMÜ ÇÖZEN KOD: Kullanıcı ile Cevaplar arasındaki şelaleyi iptal et! (Döngüyü kırar)
+            builder.Entity<SurveyAnswer>()
+                .HasOne(sa => sa.AppUser)
+                .WithMany()
+                .HasForeignKey(sa => sa.AppUserId)
+                .OnDelete(DeleteBehavior.NoAction);
         }
     }
 }
