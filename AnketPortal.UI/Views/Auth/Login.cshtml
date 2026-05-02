@@ -80,7 +80,7 @@
         </div>
     </div>
 
-    <!-- Jquery ve SweetAlert2 Kütüphaneleri (Bunlar olmazsa AJAX çalışmaz!) -->
+    <!-- Jquery ve SweetAlert2 Kütüphaneleri -->
     <script src="https://code.jquery.com/jquery-3.7.1.min.js"></script>
     <script src="https://cdn.jsdelivr.net/npm/sweetalert2@11"></script>
 
@@ -88,12 +88,12 @@
     <script>
         $(document).ready(function () {
 
-            // Kullanıcı zaten giriş yapmışsa direkt Ana Sayfaya gönder
+            // Kullanıcı zaten giriş yapmışsa (token varsa) direkt Ana Sayfaya gönder
             if (localStorage.getItem("token")) {
                 window.location.href = "/Home/Index";
             }
 
-            // Butona tıklandığında (Sayfa yenilenme riski SIFIR)
+            // Butona tıklandığında
             $("#btnSubmit").click(function () {
 
                 var userName = $("#txtUserName").val();
@@ -110,14 +110,18 @@
 
                 // API'ye İstek At
                 $.ajax({
-                    url: "https://localhost:7094/api/Auth/Login",
+                    url: "https://localhost:7094/api/Auth/Login", // PORT NUMARASI BURADA
                     type: "POST",
                     contentType: "application/json",
                     data: JSON.stringify({ UserName: userName, Password: password }),
                     success: function (response) {
                         if (response.status) {
-                            // Token'ı kaydet
-                            localStorage.setItem("token", response.data);
+
+                            // YENİ SİSTEM: Artık response.data bir obje. İçinden accessToken ve refreshToken'ı alıyoruz
+                            var tokenData = response.data;
+
+                            localStorage.setItem("token", tokenData.accessToken);
+                            localStorage.setItem("refreshToken", tokenData.refreshToken);
 
                             Swal.fire({
                                 icon: 'success',
@@ -126,7 +130,7 @@
                                 showConfirmButton: false,
                                 timer: 1500
                             }).then(() => {
-                                window.location.href = "/Home/Index"; // Başarılıysa Home'a git
+                                window.location.href = "/Home/Index";
                             });
                         } else {
                             Swal.fire('Hata!', response.message, 'error');
@@ -135,7 +139,7 @@
                     },
                     error: function (xhr) {
                         console.log(xhr.responseText);
-                        Swal.fire('Bağlantı veya Yetki Hatası!', 'Giriş yapılamadı. Kullanıcı adı veya şifre yanlış.', 'error');
+                        Swal.fire('Bağlantı veya Yetki Hatası!', 'Giriş yapılamadı. Kullanıcı adı veya şifre yanlış olabilir.', 'error');
                         $("#btnSubmit").prop("disabled", false).html('<i class="fa-solid fa-right-to-bracket me-2"></i> Giriş Yap');
                     }
                 });
