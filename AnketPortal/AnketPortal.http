@@ -1,0 +1,6 @@
+@AnketPortal_HostAddress = http://localhost:5068
+
+GET {{AnketPortal_HostAddress}}/weatherforecast/
+Accept: application/json
+
+###
