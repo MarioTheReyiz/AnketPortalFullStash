@@ -98,10 +98,9 @@
                     type: "GET",
                     headers: { "Authorization": "Bearer " + token },
                     success: function (res) {
-                        console.log("API Response:", res); // Hata ayıklama için
-
                         if (res.status) {
-                            allQuestions = res.data || res.Data || []; // Casing sorununu çözer
+                            // KRİTİK DÜZELTME: Büyük/Küçük harf duyarlılığını ortadan kaldırıyoruz
+                            allQuestions = res.data || res.Data || [];
                             var html = "";
 
                             if (allQuestions.length > 0) {
@@ -136,7 +135,9 @@
 
                                     if (q.type != 1) {
                                         html += `<div class="row row-cols-1 row-cols-md-2 g-2 mt-2">`;
-                                        q.options.forEach(opt => {
+                                        // options/Options kontrolü eklendi
+                                        var opts = q.options || q.Options || [];
+                                        opts.forEach(opt => {
                                             var imgTag = opt.imageUrl ? `<img src="${opt.imageUrl}" class="rounded me-2 shadow-sm" style="width:35px;height:35px;object-fit:cover;border:1px solid #eee;">` : `<i class="fa-regular fa-circle text-muted me-2"></i>`;
                                             html += `<div class="col"><div class="p-2 border rounded bg-white d-flex align-items-center">${imgTag} <span class="small">${opt.optionText}</span></div></div>`;
                                         });
@@ -151,8 +152,8 @@
                         }
                     },
                     error: function(xhr) {
-                        console.error("Yükleme Hatası:", xhr);
-                        $("#questionsList").html('<div class="alert alert-danger">Sorular yüklenirken bir hata oluştu. Lütfen girişi kontrol edin.</div>');
+                        console.error("Yükleme Hatası:", xhr.status, xhr.responseText);
+                        $("#questionsList").html('<div class="alert alert-danger text-center">Sorular yüklenirken bir hata oluştu. (Hata: ' + xhr.status + ')</div>');
                     }
                 });
             }
@@ -179,7 +180,8 @@
                     $("#optionsContainer").empty();
                     if (q.type != 1) {
                         $("#optionsArea").show();
-                        q.options.forEach(opt => addOptionInput(opt.optionText, opt.imageUrl));
+                        var opts = q.options || q.Options || [];
+                        opts.forEach(opt => addOptionInput(opt.optionText, opt.imageUrl));
                     }
                     $("#questionModal").modal("show");
                 }

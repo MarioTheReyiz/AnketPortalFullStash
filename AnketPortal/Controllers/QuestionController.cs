@@ -57,16 +57,15 @@ namespace AnketPortal.API.Controllers
                     Text = q.Text,
                     Type = (int)q.Type,
                     IsRequired = q.IsRequired,
-                    MediaUrl = q.MediaUrl, // BU SATIRIN OLDUĞUNDAN EMİN OL
+                    MediaUrl = q.MediaUrl, // BU SATIRI EKLE
                     Options = q.Options.Select(o => new OptionDto
                     {
                         Id = o.Id,
                         OptionText = o.OptionText,
-                        ImageUrl = o.ImageUrl, // BU SATIRIN OLDUĞUNDAN EMİN OL[cite: 4]
+                        ImageUrl = o.ImageUrl, // BU SATIRI EKLE
                         Order = o.Order
                     }).OrderBy(o => o.Order).ToList()
                 }).ToListAsync();
-
             return Ok(new ResultDto { Status = true, Data = questions });
         }
 
