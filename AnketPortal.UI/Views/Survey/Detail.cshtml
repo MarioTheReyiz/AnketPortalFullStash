@@ -1,76 +1,81 @@
 ﻿@{
     ViewData["Title"] = "Anket Soruları";
-    // Bu sayfaya gelen anketin ID'si (Controller'dan ViewBag ile de yollayabilirsin)
     var surveyId = ViewContext.RouteData.Values["id"];
 }
 
 <div class="container mt-4">
     <div class="d-flex justify-content-between align-items-center mb-4">
-        <h2 class="h4 text-gray-800"><i class="fa-solid fa-list-check"></i> Soru Yönetimi</h2>
-        <button class="btn btn-primary" data-bs-toggle="modal" data-bs-target="#questionModal">
-            <i class="fa fa-plus"></i> Yeni Soru Ekle
-        </button>
+        <h2 class="h4 text-gray-800"><i class="fa-solid fa-list-check text-primary me-2"></i> Soru Yönetimi</h2>
+        <div>
+            <a href="/Survey/Index" class="btn btn-outline-secondary btn-sm me-2"><i class="fa fa-arrow-left"></i> Geri Dön</a>
+            <button class="btn btn-primary btn-sm" id="btnOpenAddModal">
+                <i class="fa fa-plus"></i> Yeni Soru Ekle
+            </button>
+        </div>
     </div>
 
-    <!-- Soruların Listeleneceği Yer (Daha sonra buraya API'den verileri çekeceğiz) -->
-    <div class="card shadow">
-        <div class="card-body">
-            <p class="text-muted">Bu ankete henüz soru eklenmemiş.</p>
+    <div class="card shadow border-left-primary">
+        <div class="card-body" id="questionsList">
+            <p class="text-muted">Sorular yükleniyor...</p>
         </div>
     </div>
 </div>
 
-<!-- SORU EKLEME MODALI -->
+<!-- MODAL -->
 <div class="modal fade" id="questionModal" tabindex="-1">
     <div class="modal-dialog modal-lg">
         <div class="modal-content">
             <div class="modal-header bg-primary text-white">
-                <h5 class="modal-title">Yeni Soru Ekle</h5>
+                <h5 class="modal-title" id="modalTitle">Yeni Soru Ekle</h5>
                 <button type="button" class="btn-close btn-close-white" data-bs-dismiss="modal"></button>
             </div>
             <div class="modal-body">
                 <form id="frmQuestion" onsubmit="return false;">
                     <input type="hidden" id="hdnSurveyId" value="@surveyId" />
+                    <input type="hidden" id="hdnQuestionId" value="0" />
 
                     <div class="mb-3">
                         <label class="form-label fw-bold">Soru Metni</label>
-                        <input type="text" class="form-control" id="txtQuestionText" placeholder="Sorduğunuz soruyu buraya yazın..." required>
+                        <input type="text" class="form-control" id="txtQuestionText" placeholder="Soru metni..." required>
+                    </div>
+
+                    <!-- SORU MEDYA URL -->
+                    <div class="mb-3">
+                        <label class="form-label small text-muted fw-bold">Soru Görsel/Video URL (Opsiyonel)</label>
+                        <input type="text" class="form-control form-control-sm" id="txtMediaUrl" placeholder="Resim veya YouTube linki...">
                     </div>
 
                     <div class="row mb-3">
                         <div class="col-md-6">
                             <label class="form-label fw-bold">Soru Tipi</label>
                             <select class="form-select" id="cbQuestionType">
-                                <option value="1">Kısa Metin (Açık Uçlu)</option>
-                                <option value="2">Tek Seçim (Radio Button)</option>
+                                <option value="1">Kısa Metin</option>
+                                <option value="2">Tek Seçim (Radio)</option>
                                 <option value="3">Çoklu Seçim (Checkbox)</option>
                             </select>
                         </div>
                         <div class="col-md-6 d-flex align-items-end pb-1">
                             <div class="form-check form-switch fs-5">
                                 <input class="form-check-input" type="checkbox" id="chkIsRequired" checked>
-                                <label class="form-check-label ms-2 fs-6">Bu soru zorunlu mu?</label>
+                                <label class="form-check-label ms-2 fs-6">Zorunlu mu?</label>
                             </div>
                         </div>
                     </div>
 
-                    <!-- ŞIK EKLEME BÖLÜMÜ (Başlangıçta Gizli) -->
-                    <div id="optionsArea" style="display:none;" class="p-3 bg-light border rounded">
+                    <div id="optionsArea" style="display:none;" class="p-3 bg-light border rounded text-center">
                         <div class="d-flex justify-content-between align-items-center mb-3">
-                            <label class="form-label fw-bold mb-0 text-primary"><i class="fa fa-list"></i> Şıkları Belirleyin</label>
+                            <label class="form-label fw-bold mb-0">Şıklar ve Görselleri</label>
                             <button type="button" class="btn btn-sm btn-success" id="btnAddOption">
                                 <i class="fa fa-plus"></i> Şık Ekle
                             </button>
                         </div>
-                        <div id="optionsContainer">
-                            <!-- JS ile buraya otomatik inputlar gelecek -->
-                        </div>
+                        <div id="optionsContainer"></div>
                     </div>
                 </form>
             </div>
             <div class="modal-footer">
                 <button type="button" class="btn btn-secondary" data-bs-dismiss="modal">İptal</button>
-                <button type="button" class="btn btn-primary" id="btnSaveQuestion">Soruyu Kaydet</button>
+                <button type="button" class="btn btn-primary" id="btnSaveQuestion">Kaydet</button>
             </div>
         </div>
     </div>
@@ -78,175 +83,173 @@
 
 @section Scripts {
     <script>
-        $(document).ready(function () {
+        var allQuestions = [];
+        var token = localStorage.getItem("token");
 
-            // Sayfa açıldığında soruları getir
+        $(document).ready(function () {
             loadQuestions();
 
             function loadQuestions() {
                 var surveyId = $("#hdnSurveyId").val();
-
                 $.ajax({
-                    url: "https://localhost:7094/api/Question/GetQuestions/" + surveyId, // Portunu kontrol et!
+                    url: "https://localhost:7094/api/Question/GetBySurvey/" + surveyId,
                     type: "GET",
+                    headers: { "Authorization": "Bearer " + token },
                     success: function (res) {
-                        if (res.status && res.data.length > 0) {
+                        if (res.status) {
+                            allQuestions = res.data;
                             var html = "";
+                            if (allQuestions.length > 0) {
+                                allQuestions.forEach(function (q, index) {
+                                    var typeName = q.type == 1 ? "Metin" : (q.type == 2 ? "Radio" : "Checkbox");
 
-                            // Gelen her bir soruyu dön
-                            res.data.forEach(function (q, index) {
-                                // Soru tipinin adını belirle
-                                var typeName = q.type == 1 ? "Kısa Metin" : (q.type == 2 ? "Tek Seçim (Radio)" : "Çoklu Seçim (Checkbox)");
+                                    html += `<div class="card mb-4 shadow-sm border-left-info"><div class="card-body">
+                                                <div class="d-flex justify-content-between align-items-start">
+                                                    <div>
+                                                        <h5 class="fw-bold mb-1">${index + 1}. ${q.text}</h5>
+                                                        <span class="badge bg-secondary mb-2">${typeName}</span>
+                                                    </div>
+                                                    <div>
+                                                        <button class="btn btn-sm btn-outline-warning btn-edit-question" data-id="${q.id}"><i class="fa fa-pen"></i></button>
+                                                        <button class="btn btn-sm btn-outline-danger btn-delete-question" data-id="${q.id}"><i class="fa fa-trash"></i></button>
+                                                    </div>
+                                                </div>`;
 
-                                // Zorunluysa yanına kırmızı rozet at
-                                var requiredBadge = q.isRequired ? '<span class="badge bg-danger ms-2">Zorunlu</span>' : '';
+                                    // Soru Medyası Gösterimi
+                                    if (q.mediaUrl) {
+                                        if (q.mediaUrl.includes("youtube.com") || q.mediaUrl.includes("youtu.be")) {
+                                            var vidId = q.mediaUrl.split('v=')[1] || q.mediaUrl.split('/').pop();
+                                            html += `<div class="ratio ratio-16x9 my-3 shadow-sm rounded overflow-hidden" style="max-width:400px">
+                                                        <iframe src="https://www.youtube.com/embed/${vidId}" allowfullscreen></iframe>
+                                                     </div>`;
+                                        } else {
+                                            html += `<img src="${q.mediaUrl}" class="img-fluid rounded my-3 shadow-sm border" style="max-height:200px;">`;
+                                        }
+                                    }
 
-                                html += `
-                                <div class="card mb-3 border-left-primary shadow-sm">
-                                    <div class="card-body">
-                                        <div class="d-flex justify-content-between align-items-center mb-2">
-                                            <h5 class="card-title fw-bold mb-0">${index + 1}. ${q.text} ${requiredBadge}</h5>
-                                            <div>
-                                                <span class="badge bg-info text-dark me-2">${typeName}</span>
-                                                <button class="btn btn-sm btn-outline-danger btn-delete-question" data-id="${q.id}">
-                                                    <i class="fa fa-trash"></i>
-                                                </button>
-                                            </div>
-                                        </div>`;
-
-                                // Eğer soru seçmeliyse şıkları liste halinde çiz
-                                if (q.type != 1 && q.options.length > 0) {
-                                    html += `<ul class="list-group mt-3">`;
-                                    q.options.forEach(function (opt) {
-                                        // Radio ve Checkbox için farklı ikonlar
-                                        var icon = q.type == 2 ? "fa-circle-dot" : "fa-square-check";
-                                        html += `<li class="list-group-item"><i class="fa-regular ${icon} text-secondary me-2"></i> ${opt.optionText}</li>`;
-                                    });
-                                    html += `</ul>`;
-                                }
-                                // Metin sorusuysa temsili bir input koy
-                                else if (q.type == 1) {
-                                    html += `<div class="mt-3"><input type="text" class="form-control" placeholder="Kullanıcı buraya metin girecek..." disabled></div>`;
-                                }
-
-                                html += `</div></div>`;
-                            });
-
-                            // Oluşturulan HTML'i ekrana bas
+                                    if (q.type != 1) {
+                                        html += `<div class="row row-cols-1 row-cols-md-2 g-2 mt-2">`;
+                                        q.options.forEach(opt => {
+                                            var imgTag = opt.imageUrl ? `<img src="${opt.imageUrl}" class="rounded me-2" style="width:30px;height:30px;object-fit:cover;border:1px solid #ddd;">` : `<i class="fa-regular fa-circle text-muted me-2"></i>`;
+                                            html += `<div class="col"><div class="p-2 border rounded bg-light d-flex align-items-center">${imgTag} ${opt.optionText}</div></div>`;
+                                        });
+                                        html += `</div>`;
+                                    }
+                                    html += `</div></div>`;
+                                });
+                            } else {
+                                html = '<p class="text-center text-muted my-5">Henüz soru eklenmemiş.</p>';
+                            }
                             $("#questionsList").html(html);
-                        } else {
-                            $("#questionsList").html('<p class="text-muted">Bu ankete henüz soru eklenmemiş.</p>');
                         }
-                    },
-                    error: function() {
-                        console.error("Sorular yüklenirken hata oluştu.");
                     }
                 });
             }
 
-            // 1. Soru Tipi Değiştiğinde Animasyonlu Şık Alanı Yönetimi
-            $("#cbQuestionType").change(function () {
-                var type = $(this).val();
-                if (type == "1") {
-                    $("#optionsArea").slideUp();
+            $("#btnOpenAddModal").click(function () {
+                $("#hdnQuestionId").val("0");
+                $("#modalTitle").text("Yeni Soru Ekle");
+                $("#frmQuestion")[0].reset();
+                $("#optionsArea").hide();
+                $("#optionsContainer").empty();
+                $("#questionModal").modal("show");
+            });
+
+            // DÜZENLEME MODALINI AÇ
+            $(document).on("click", ".btn-edit-question", function () {
+                var id = $(this).data("id");
+                var q = allQuestions.find(x => x.id == id);
+                if (q) {
+                    $("#hdnQuestionId").val(q.id);
+                    $("#modalTitle").text("Soruyu Düzenle");
+                    $("#txtQuestionText").val(q.text);
+                    $("#txtMediaUrl").val(q.mediaUrl);
+                    $("#cbQuestionType").val(q.type);
+                    $("#chkIsRequired").prop("checked", q.isRequired);
                     $("#optionsContainer").empty();
-                } else {
-                    $("#optionsArea").slideDown();
-                    // Eğer hiç şık yoksa otomatik 2 tane boş şık ekle
-                    if ($("#optionsContainer .option-row").length === 0) {
-                        addOptionInput();
-                        addOptionInput();
+                    if (q.type != 1) {
+                        $("#optionsArea").show();
+                        q.options.forEach(opt => addOptionInput(opt.optionText, opt.imageUrl));
                     }
+                    $("#questionModal").modal("show");
                 }
             });
 
-            // 2. Yeni Şık Ekle Butonu
-            $("#btnAddOption").click(function () {
-                addOptionInput();
+            $("#cbQuestionType").change(function () {
+                if ($(this).val() == "1") { $("#optionsArea").hide(); $("#optionsContainer").empty(); }
+                else { $("#optionsArea").show(); if ($(".option-row").length === 0) { addOptionInput(); addOptionInput(); } }
             });
 
-            // 3. Şık Silme İşlemi (Dinamik elementler için .on kullanılır)
-            $("#optionsContainer").on("click", ".btn-remove-option", function () {
-                if($(".option-row").length > 2){
-                    $(this).closest(".option-row").remove();
-                } else {
-                    Swal.fire('Uyarı', 'Seçmeli sorularda en az 2 şık olmalıdır!', 'warning');
-                }
-            });
+            $("#btnAddOption").click(function() { addOptionInput(); });
 
-            // Şık Input HTML'i
-            function addOptionInput() {
+            function addOptionInput(text = "", img = "") {
                 var html = `
-                    <div class="input-group mb-2 option-row">
-                        <span class="input-group-text bg-white"><i class="fa fa-check-circle text-success"></i></span>
-                        <input type="text" class="form-control option-input" placeholder="Şık metnini yazın...">
-                        <button class="btn btn-outline-danger btn-remove-option" type="button"><i class="fa fa-trash"></i></button>
+                    <div class="option-row border rounded p-2 mb-2 bg-white shadow-sm">
+                        <div class="input-group mb-1">
+                            <input type="text" class="form-control form-control-sm option-input" placeholder="Şık metni..." value="${text}">
+                            <button class="btn btn-sm btn-outline-danger btn-remove-option" type="button"><i class="fa fa-trash"></i></button>
+                        </div>
+                        <input type="text" class="form-control form-control-sm option-image-input" placeholder="Görsel URL (Opsiyonel)" value="${img}">
                     </div>`;
                 $("#optionsContainer").append(html);
             }
 
-            // 4. API'ye Kaydetme İşlemi
+            $(document).on("click", ".btn-remove-option", function () { $(this).closest(".option-row").remove(); });
+
             $("#btnSaveQuestion").click(function () {
-                var surveyId = $("#hdnSurveyId").val();
-                var text = $("#txtQuestionText").val();
-                var type = $("#cbQuestionType").val();
-                var isRequired = $("#chkIsRequired").is(":checked");
-
+                var qId = parseInt($("#hdnQuestionId").val());
                 var options = [];
-
-                if(!text) {
-                    Swal.fire("Eksik", "Lütfen soru metnini yazın.", "warning");
-                    return;
-                }
-
-                // Tip 2 veya 3 ise ekrandaki inputları diziye doldur
-                if (type != "1") {
-                    $(".option-input").each(function () {
-                        var val = $(this).val().trim();
-                        if (val !== "") {
-                            options.push(val);
-                        }
+                if ($("#cbQuestionType").val() != "1") {
+                    $(".option-row").each(function (i) {
+                        var txt = $(this).find(".option-input").val().trim();
+                        var img = $(this).find(".option-image-input").val().trim();
+                        if (txt !== "") options.push({ OptionText: txt, ImageUrl: img, Order: i + 1 });
                     });
-
-                    if (options.length < 2) {
-                        Swal.fire("Eksik", "Çoktan seçmeli sorular için en az 2 dolu şık girmelisiniz!", "warning");
-                        return;
-                    }
                 }
 
-                // API'nin beklediği paket (JSON)
                 var payload = {
-                    SurveyId: parseInt(surveyId),
-                    Text: text,
-                    Type: parseInt(type),
-                    IsRequired: isRequired,
+                    Id: qId,
+                    SurveyId: parseInt($("#hdnSurveyId").val()),
+                    Text: $("#txtQuestionText").val(),
+                    MediaUrl: $("#txtMediaUrl").val(),
+                    Type: parseInt($("#cbQuestionType").val()),
+                    IsRequired: $("#chkIsRequired").is(":checked"),
                     Options: options
                 };
 
-                $("#btnSaveQuestion").prop("disabled", true).text("Kaydediliyor...");
+                var method = qId > 0 ? "PUT" : "POST";
+                var url = qId > 0 ? "https://localhost:7094/api/Question/UpdateQuestion" : "https://localhost:7094/api/Question/AddQuestion";
 
                 $.ajax({
-                    url: "https://localhost:7094/api/Question/AddQuestion",
-                    type: "POST",
+                    url: url,
+                    type: method,
                     contentType: "application/json",
+                    headers: { "Authorization": "Bearer " + token },
                     data: JSON.stringify(payload),
                     success: function (res) {
-                        if(res.status){
-                            Swal.fire("Başarılı!", res.message, "success").then(() => {
-                                location.reload();
-                            });
-                        } else {
-                            Swal.fire("Hata", res.message, "error");
-                            $("#btnSaveQuestion").prop("disabled", false).text("Soruyu Kaydet");
+                        if (res.status) {
+                            $("#questionModal").modal("hide");
+                            Swal.fire("Başarılı", res.message, "success");
+                            loadQuestions();
                         }
-                    },
-                    error: function (xhr) {
-                        Swal.fire("Hata", "İşlem sırasında bir hata oluştu.", "error");
-                        $("#btnSaveQuestion").prop("disabled", false).text("Soruyu Kaydet");
                     }
                 });
             });
 
+            // SİLME İŞLEMİ
+            $(document).on("click", ".btn-delete-question", function () {
+                var id = $(this).data("id");
+                Swal.fire({ title: 'Emin misiniz?', icon: 'warning', showCancelButton: true, confirmButtonText: 'Sil' }).then((result) => {
+                    if (result.isConfirmed) {
+                        $.ajax({
+                            url: "https://localhost:7094/api/Question/" + id,
+                            type: "DELETE",
+                            headers: { "Authorization": "Bearer " + token },
+                            success: function () { loadQuestions(); }
+                        });
+                    }
+                });
+            });
         });
     </script>
 }

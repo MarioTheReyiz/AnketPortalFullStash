@@ -23,17 +23,24 @@ namespace AnketPortal.API.Controllers
             {
                 SurveyId = model.SurveyId,
                 Text = model.Text,
-                Type = (QuestionType)model.Type,
-                IsRequired = model.IsRequired
+                Type = (AnketPortal.API.Models.Enums.QuestionType)model.Type,
+                IsRequired = model.IsRequired,
+                MediaUrl = model.MediaUrl // Yeni eklenen alan
             };
 
             if (model.Type != 1 && model.Options != null)
             {
-                for (int i = 0; i < model.Options.Count; i++)
+                foreach (var opt in model.Options)
                 {
-                    question.Options.Add(new QuestionOption { OptionText = model.Options[i], Order = i + 1 });
+                    question.Options.Add(new QuestionOption
+                    {
+                        OptionText = opt.OptionText, // Artık opt.OptionText diyerek metne ulaşıyoruz
+                        ImageUrl = opt.ImageUrl,     // Şık görseli
+                        Order = question.Options.Count + 1
+                    });
                 }
             }
+
             _context.Questions.Add(question);
             await _context.SaveChangesAsync();
             return Ok(new ResultDto { Status = true, Message = "Soru kaydedildi." });
@@ -54,5 +61,50 @@ namespace AnketPortal.API.Controllers
                 }).ToListAsync();
             return Ok(new ResultDto { Status = true, Data = questions });
         }
+
+        // Soruyu ve bağlı olduğu şıkları siler
+        [HttpDelete("{id}")]
+        public async Task<IActionResult> Delete(int id)
+        {
+            var question = await _context.Questions.Include(q => q.Options).FirstOrDefaultAsync(x => x.Id == id);
+            if (question == null) return NotFound(new ResultDto { Status = false, Message = "Soru bulunamadı." });
+
+            _context.Questions.Remove(question);
+            await _context.SaveChangesAsync();
+            return Ok(new ResultDto { Status = true, Message = "Soru başarıyla silindi." });
+        }
+
+        // Mevcut soruyu günceller
+        [HttpPut("UpdateQuestion")]
+        public async Task<IActionResult> UpdateQuestion(QuestionDto model)
+        {
+            // 1. Soruyu ve şıklarını bul
+            var question = await _context.Questions.Include(q => q.Options).FirstOrDefaultAsync(x => x.Id == model.Id);
+            if (question == null) return NotFound(new ResultDto { Status = false, Message = "Soru bulunamadı." });
+
+            // 2. Ana bilgileri güncelle
+            question.Text = model.Text;
+            question.IsRequired = model.IsRequired;
+            question.Type = (AnketPortal.API.Models.Enums.QuestionType)model.Type;
+
+            // 3. Şıkları güncelle (En sağlam yol: eskileri silip yenileri eklemek)
+            _context.QuestionOptions.RemoveRange(question.Options);
+
+            if (model.Type != 1 && model.Options != null)
+            {
+                foreach (var opt in model.Options)
+                {
+                    question.Options.Add(new AnketPortal.API.Models.QuestionOption
+                    {
+                        OptionText = opt.OptionText,
+                        Order = opt.Order
+                    });
+                }
+            }
+
+            await _context.SaveChangesAsync();
+            return Ok(new ResultDto { Status = true, Message = "Soru başarıyla güncellendi." });
+        }
+
     }
 }

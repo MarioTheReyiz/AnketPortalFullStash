@@ -5,6 +5,8 @@ namespace AnketPortal.API.Models
     public class Question : BaseEntity
     {
         public string Text { get; set; } = string.Empty;
+
+        public string? MediaUrl { get; set; } // Fotoğraf veya Video linki
         public QuestionType Type { get; set; } 
         public bool IsRequired { get; set; } = true; 
 

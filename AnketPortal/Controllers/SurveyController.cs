@@ -148,15 +148,17 @@ namespace AnketPortal.API.Controllers
         }
 
         // Soruya Şık Ekleme (ORİJİNAL HALİYLE DURUYOR)
+        // Soruya Şık Ekleme (Düzeltildi)
         [Authorize(Roles = "Admin,SuperAdmin")]
         [HttpPost("AddOption")]
         public async Task<IActionResult> AddOption(OptionCreateDto model)
         {
             var option = new QuestionOption
             {
-                OptionText = model.OptionText,
+                OptionText = model.OptionText, // Boşluk silindi
                 Order = model.Order,
                 QuestionId = model.QuestionId,
+                ImageUrl = model.ImageUrl, // Yeni özelliğimizi buraya da ekledik
                 CreatedDate = DateTime.Now
             };
 

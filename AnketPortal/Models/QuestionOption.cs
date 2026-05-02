@@ -4,7 +4,7 @@
     {
         public string OptionText { get; set; } = string.Empty;
 
-
+        public string? ImageUrl { get; set; } // Şık fotoğrafı
         public int Order { get; set; }
 
 
