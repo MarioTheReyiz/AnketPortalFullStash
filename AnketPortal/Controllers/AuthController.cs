@@ -70,6 +70,7 @@ namespace AnketPortal.API.Controllers
         }
 
         [Authorize(Roles = "SuperAdmin")] // Yetki Atama API'si
+        [HttpPost("AssignRole")]
         public async Task<IActionResult> AssignRole(RoleAssignDto model)
         {
             var user = await _userManager.FindByNameAsync(model.UserName);
