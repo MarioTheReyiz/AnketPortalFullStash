@@ -1,0 +1,419 @@
+﻿@{
+    ViewData["Title"] = "Anket Yönetimi";
+}
+
+<div class="card shadow mb-4 border-bottom-primary">
+    <div class="card-header py-3 d-flex justify-content-between align-items-center">
+        <h6 class="m-0 font-weight-bold text-primary"><i class="fa-solid fa-list me-2"></i>Sistemdeki Anketler</h6>
+        <button class="btn btn-sm btn-success fw-bold" id="btnNewSurvey">
+            <i class="fa-solid fa-plus me-1"></i> Yeni Anket Oluştur
+        </button>
+    </div>
+    <div class="card-body">
+        <div class="table-responsive">
+            <table class="table table-bordered table-hover align-middle" id="surveyTable" width="100%" cellspacing="0">
+                <thead class="table-light">
+                    <tr>
+                        <th style="width: 50px;">ID</th>
+                        <th>Anket Başlığı</th>
+                        <th>Bitiş Tarihi</th>
+                        <th class="text-center">Görünürlük</th>
+                        <th class="text-center">Durum</th>
+                        <th class="text-center" style="width: 150px;">İşlemler</th>
+                    </tr>
+                </thead>
+                <tbody id="surveyTableBody">
+                    <tr>
+                        <td colspan="6" class="text-center text-muted p-4">
+                            <i class="fas fa-spinner fa-spin fa-2x mb-2"></i><br>
+                            Anketler Yükleniyor...
+                        </td>
+                    </tr>
+                </tbody>
+            </table>
+        </div>
+    </div>
+</div>
+
+<!-- ========================================== -->
+<!-- MODALLAR (AÇILIR PENCERELER)               -->
+<!-- ========================================== -->
+<!-- 1. Yeni Anket Ekleme Modalı -->
+<div class="modal fade" id="newSurveyModal" tabindex="-1" aria-hidden="true">
+    <div class="modal-dialog">
+        <div class="modal-content">
+            <div class="modal-header bg-success text-white">
+                <h5 class="modal-title fw-bold"><i class="fa-solid fa-plus me-2"></i>Yeni Anket Oluştur</h5>
+                <button type="button" class="btn-close btn-close-white" data-bs-dismiss="modal" aria-label="Close"></button>
+            </div>
+            <div class="modal-body">
+                <form id="frmAddSurvey" onsubmit="return false;">
+                    <div class="mb-3">
+                        <label class="form-label fw-bold">Anket Başlığı <span class="text-danger">*</span></label>
+                        <input type="text" class="form-control" id="txtTitle" placeholder="Örn: Müşteri Memnuniyeti Anketi" required>
+                    </div>
+                    <div class="mb-3">
+                        <label class="form-label fw-bold">Açıklama</label>
+                        <textarea class="form-control" id="txtDescription" rows="3" placeholder="Anketin amacını kısaca açıklayın..."></textarea>
+                    </div>
+                    <div class="row mb-3">
+                        <div class="col-md-6">
+                            <label class="form-label fw-bold">Görünürlük İzni</label>
+                            <select class="form-select border-info" id="cmbIsPublic">
+                                <option value="true">🌐 Herkese Açık</option>
+                                <option value="false">🔗 Sadece Link İle (Gizli)</option>
+                            </select>
+                        </div>
+                        <div class="col-md-6">
+                            <label class="form-label fw-bold">Bitiş Tarihi <span class="text-danger">*</span></label>
+                            <input type="datetime-local" class="form-control" id="txtEndDate" required>
+                        </div>
+                    </div>
+                    <div class="mb-3 p-3 bg-light rounded text-center border">
+                        <label class="form-label fw-bold mb-2 d-block">Yayın Durumu</label>
+                        <div class="d-flex align-items-center justify-content-center">
+                            <span class="text-secondary fw-bold me-3">Pasif</span>
+                            <div class="form-check form-switch m-0 p-0 d-flex align-items-center">
+                                <input class="form-check-input m-0" type="checkbox" id="chkNewIsActive" role="switch" style="cursor:pointer; width: 3em; height: 1.5em;" checked>
+                            </div>
+                            <span class="text-success fw-bold ms-3">Aktif (Yayınla)</span>
+                        </div>
+                    </div>
+                </form>
+            </div>
+            <div class="modal-footer">
+                <button type="button" class="btn btn-secondary" data-bs-dismiss="modal">İptal</button>
+                <button type="button" class="btn btn-success fw-bold" id="btnSaveSurvey">
+                    <i class="fa-solid fa-floppy-disk me-1"></i> Kaydet
+                </button>
+            </div>
+        </div>
+    </div>
+</div>
+
+<!-- 2. Anket Düzenleme Modalı -->
+<div class="modal fade" id="editSurveyModal" tabindex="-1" aria-hidden="true">
+    <div class="modal-dialog">
+        <div class="modal-content">
+            <div class="modal-header bg-warning text-dark">
+                <h5 class="modal-title fw-bold"><i class="fa-solid fa-pen me-2"></i>Anketi Düzenle</h5>
+                <button type="button" class="btn-close" data-bs-dismiss="modal" aria-label="Close"></button>
+            </div>
+            <div class="modal-body">
+                <form id="frmEditSurvey" onsubmit="return false;">
+                    <input type="hidden" id="txtEditId">
+                    <div class="mb-3">
+                        <label class="form-label fw-bold">Anket Başlığı <span class="text-danger">*</span></label>
+                        <input type="text" class="form-control" id="txtEditTitle" required>
+                    </div>
+                    <div class="mb-3">
+                        <label class="form-label fw-bold">Açıklama</label>
+                        <textarea class="form-control" id="txtEditDescription" rows="3"></textarea>
+                    </div>
+                    <div class="row mb-3">
+                        <div class="col-md-6">
+                            <label class="form-label fw-bold">Görünürlük İzni</label>
+                            <select class="form-select border-info" id="cmbEditIsPublic">
+                                <option value="true">🌐 Herkese Açık</option>
+                                <option value="false">🔗 Sadece Link İle (Gizli)</option>
+                            </select>
+                        </div>
+                        <div class="col-md-6">
+                            <label class="form-label fw-bold">Bitiş Tarihi <span class="text-danger">*</span></label>
+                            <input type="datetime-local" class="form-control" id="txtEditEndDate" required>
+                        </div>
+                    </div>
+                </form>
+            </div>
+            <div class="modal-footer">
+                <button type="button" class="btn btn-secondary" data-bs-dismiss="modal">İptal</button>
+                <button type="button" class="btn btn-warning fw-bold text-dark" id="btnUpdateSurvey">
+                    <i class="fa-solid fa-arrows-rotate me-1"></i> Güncelle
+                </button>
+            </div>
+        </div>
+    </div>
+</div>
+
+<!-- ========================================== -->
+<!-- SCRİPT (AJAX) KODLARI                      -->
+<!-- ========================================== -->
+@section Scripts {
+    <script>
+        $(document).ready(function () {
+
+            // 1. SAYFA YÜKLENDİĞİNDE ANKETLERİ ÇEK
+            LoadSurveys();
+
+            // 2. YENİ ANKET MODALINI AÇ
+            $("#btnNewSurvey").click(function () {
+                $("#frmAddSurvey")[0].reset();
+
+                var now = new Date();
+                // Geçmiş engelleniyor
+                var minDate = new Date(now.getTime() - now.getTimezoneOffset() * 60000).toISOString().slice(0, 16);
+                $("#txtEndDate").attr("min", minDate);
+
+                // Varsayılan tarih: 24 saat sonrası
+                var tomorrow = new Date(now.getTime() + (24 * 60 * 60 * 1000));
+                tomorrow.setMinutes(tomorrow.getMinutes() - tomorrow.getTimezoneOffset());
+                $("#txtEndDate").val(tomorrow.toISOString().slice(0, 16));
+
+                $("#newSurveyModal").modal("show");
+            });
+
+            // 3. YENİ ANKETİ KAYDET (POST)
+            $("#btnSaveSurvey").click(function () {
+                var title = $("#txtTitle").val().trim();
+                var description = $("#txtDescription").val().trim();
+                var endDate = $("#txtEndDate").val();
+
+                // Switch ve Select verilerini alıyoruz (True/False)
+                var isActive = $("#chkNewIsActive").is(":checked");
+                var isPublic = $("#cmbIsPublic").val() === "true";
+
+                if (title === "" || endDate === "") {
+                    Swal.fire({ icon: 'warning', title: 'Eksik Bilgi!', text: 'Lütfen yıldızlı (*) alanları doldurun.' });
+                    return;
+                }
+
+                // TARİH KONTROLÜ
+                var selectedDate = new Date(endDate);
+                var currentDate = new Date();
+                if (selectedDate <= currentDate) {
+                    Swal.fire({ icon: 'error', title: 'Mantık Hatası!', text: 'Bitiş tarihi şu andan geride veya aynı saatte olamaz.' });
+                    return;
+                }
+
+                var token = localStorage.getItem("token");
+                var btn = $(this);
+                btn.prop("disabled", true).html('<i class="fas fa-spinner fa-spin me-1"></i> Kaydediliyor...');
+
+                $.ajax({
+                    url: "https://localhost:7094/api/Survey",
+                    type: "POST",
+                    contentType: "application/json",
+                    headers: { "Authorization": "Bearer " + token },
+                    data: JSON.stringify({
+                        Title: title,
+                        Description: description,
+                        EndDate: endDate,
+                        IsActive: isActive,
+                        IsPublic: isPublic
+                    }),
+                    success: function (response) {
+                        btn.prop("disabled", false).html('<i class="fa-solid fa-floppy-disk me-1"></i> Kaydet');
+                        if (response.status) {
+                            $("#newSurveyModal").modal("hide");
+                            Swal.fire('Harika!', response.message, 'success');
+                            LoadSurveys();
+                        } else {
+                            Swal.fire('Hata!', response.message, 'error');
+                        }
+                    },
+                    error: function (xhr) {
+                        btn.prop("disabled", false).html('<i class="fa-solid fa-floppy-disk me-1"></i> Kaydet');
+                        Swal.fire('Sunucu Hatası', 'Anket eklenirken bir sorun oluştu.', 'error');
+                    }
+                });
+            });
+
+            // 4. ANKETİ SİL (DELETE)
+            $(document).on("click", ".btn-delete", function () {
+                var surveyId = $(this).data("id");
+                var token = localStorage.getItem("token");
+
+                Swal.fire({
+                    title: 'Emin misiniz?',
+                    text: "Bu işlem geri alınamaz!",
+                    icon: 'warning',
+                    showCancelButton: true,
+                    confirmButtonColor: '#d33',
+                    cancelButtonColor: '#3085d6',
+                    confirmButtonText: 'Evet, Sil!',
+                    cancelButtonText: 'İptal'
+                }).then((result) => {
+                    if (result.isConfirmed) {
+                        $.ajax({
+                            url: "https://localhost:7094/api/Survey/" + surveyId,
+                            type: "DELETE",
+                            headers: { "Authorization": "Bearer " + token },
+                            success: function (response) {
+                                Swal.fire('Silindi!', 'Anket kaldırıldı.', 'success');
+                                LoadSurveys();
+                            },
+                            error: function () {
+                                Swal.fire('Hata', 'Silme işlemi başarısız oldu.', 'error');
+                            }
+                        });
+                    }
+                });
+            });
+
+            // 5. GÜNCELLEME MODALINI AÇ VE VERİLERİ DOLDUR
+            $(document).on("click", ".btn-edit", function () {
+                var btn = $(this);
+                $("#txtEditId").val(btn.data("id"));
+                $("#txtEditTitle").val(btn.data("title"));
+                $("#txtEditDescription").val(btn.data("desc"));
+
+                // Görünürlük ayarını Select'e yansıt
+                var isPublic = btn.data("public") === true || btn.data("public") === "true";
+                $("#cmbEditIsPublic").val(isPublic.toString());
+
+                var now = new Date();
+                var minDate = new Date(now.getTime() - now.getTimezoneOffset() * 60000).toISOString().slice(0, 16);
+                $("#txtEditEndDate").attr("min", minDate);
+
+                // Eski tarih yerine TAM 24 SAAT SONRASINI atıyoruz
+                var tomorrow = new Date(now.getTime() + (24 * 60 * 60 * 1000));
+                tomorrow.setMinutes(tomorrow.getMinutes() - tomorrow.getTimezoneOffset());
+                $("#txtEditEndDate").val(tomorrow.toISOString().slice(0, 16));
+
+                $("#editSurveyModal").modal("show");
+            });
+
+            // 6. GÜNCELLEMEYİ KAYDET (PUT)
+            $("#btnUpdateSurvey").click(function () {
+                var id = $("#txtEditId").val();
+                var title = $("#txtEditTitle").val().trim();
+                var desc = $("#txtEditDescription").val().trim();
+                var endDate = $("#txtEditEndDate").val();
+                var isPublic = $("#cmbEditIsPublic").val() === "true";
+
+                if (title === "" || endDate === "") {
+                    Swal.fire({ icon: 'warning', title: 'Eksik Bilgi!', text: 'Lütfen alanları doldurun.' });
+                    return;
+                }
+
+                var selectedDate = new Date(endDate);
+                var currentDate = new Date();
+                if (selectedDate <= currentDate) {
+                    Swal.fire({ icon: 'error', title: 'Mantık Hatası!', text: 'Bitiş tarihi geçmişte olamaz.' });
+                    return;
+                }
+
+                var token = localStorage.getItem("token");
+                var btn = $(this);
+                btn.prop("disabled", true).html('<i class="fas fa-spinner fa-spin me-1"></i> Bekleniyor...');
+
+                $.ajax({
+                    url: "https://localhost:7094/api/Survey",
+                    type: "PUT",
+                    contentType: "application/json",
+                    headers: { "Authorization": "Bearer " + token },
+                    // IsPublic değerini de güncelliyoruz (IsActive switch'ten geldiği için burada dokunmadım)
+                    data: JSON.stringify({ Id: id, Title: title, Description: desc, EndDate: endDate, IsPublic: isPublic }),
+                    success: function (response) {
+                        btn.prop("disabled", false).html('<i class="fa-solid fa-arrows-rotate me-1"></i> Güncelle');
+                        $("#editSurveyModal").modal("hide");
+                        Swal.fire('Başarılı', 'Anket güncellendi.', 'success');
+                        LoadSurveys();
+                    },
+                    error: function () {
+                        btn.prop("disabled", false).html('<i class="fa-solid fa-arrows-rotate me-1"></i> Güncelle');
+                        Swal.fire('Hata', 'Güncelleme başarısız oldu.', 'error');
+                    }
+                });
+            });
+
+            // 7. DURUM DEĞİŞTİRME (TOGGLE SWITCH - AKTİF/PASİF)
+            $(document).on("change", ".form-check-input.status-toggle", function () {
+                var isChecked = $(this).is(":checked");
+                var surveyId = $(this).data("id");
+                var token = localStorage.getItem("token");
+
+                const Toast = Swal.mixin({ toast: true, position: 'top-end', showConfirmButton: false, timer: 2000, timerProgressBar: true });
+
+                Toast.fire({
+                    icon: 'success',
+                    title: isChecked ? 'Anket Aktif Edildi' : 'Anket Pasife Alındı'
+                });
+
+                // NOT: API'nde UpdateStatus metodu yazdığında, buraya ufak bir AJAX eklenebilir.
+            });
+
+            // 8. TABLOYU DOLDURAN ANA FONKSİYON (GET)
+            function LoadSurveys() {
+                var token = localStorage.getItem("token");
+
+                $.ajax({
+                    url: "https://localhost:7094/api/Survey",
+                    type: "GET",
+                    headers: { "Authorization": "Bearer " + token },
+                    success: function (response) {
+                        var tbody = $("#surveyTableBody");
+                        tbody.empty();
+
+                        if (!response || response.length === 0) {
+                            tbody.append('<tr><td colspan="6" class="text-center text-danger">Sistemde henüz bir anket bulunmuyor.</td></tr>');
+                            return;
+                        }
+
+                        $.each(response, function (index, survey) {
+
+                            // GÜZEL GÖRÜNÜMLÜ BİTİŞ TARİHİ SÜTUNU (Zırhlı Kontrol)
+                            var endDateStr = '<span class="text-muted">Süresiz</span>';
+                            if(survey.endDate && !survey.endDate.startsWith("0001-01-01")) {
+                                var eDate = new Date(survey.endDate);
+                                if(!isNaN(eDate.getTime())) {
+                                    endDateStr = '<span class="text-primary fw-bold">' + eDate.toLocaleDateString('tr-TR') + ' ' + eDate.toLocaleTimeString('tr-TR', { hour: '2-digit', minute: '2-digit' }) + '</span>';
+                                }
+                            }
+
+                            // GÖRÜNÜRLÜK ROZETİ (Public / Private)
+                            var publicBadge = survey.isPublic
+                                ? '<span class="badge bg-info text-dark"><i class="fa-solid fa-globe me-1"></i> Herkese Açık</span>'
+                                : '<span class="badge bg-dark"><i class="fa-solid fa-link me-1"></i> Sadece Link</span>';
+
+                            // ÖZEL TASARIM: BÜYÜTÜLMÜŞ SWITCH (Pasif - Switch - Aktif)
+                            var isChecked = survey.isActive ? "checked" : "";
+                            var statusSwitch = `
+                                <div class="d-flex align-items-center justify-content-center">
+                                    <span class="text-secondary fw-bold me-2" style="font-size:0.85rem;">Pasif</span>
+                                    <div class="form-check form-switch m-0 p-0 d-flex align-items-center">
+                                        <input class="form-check-input status-toggle m-0" type="checkbox" role="switch" style="cursor:pointer; width: 3em; height: 1.5em;" data-id="${survey.id}" ${isChecked}>
+                                    </div>
+                                    <span class="text-success fw-bold ms-2" style="font-size:0.85rem;">Aktif</span>
+                                </div>
+                            `;
+
+                            var row = `
+                                <tr>
+                                    <td class="fw-bold">#${survey.id}</td>
+                                    <td class="fw-bold text-dark">${survey.title}</td>
+                                    <td>${endDateStr}</td>
+                                    <td class="text-center">${publicBadge}</td>
+                                    <td class="text-center align-middle">${statusSwitch}</td>
+                                    <td class="text-center">
+                                        <a href="/Survey/Detail/${survey.id}" class="btn btn-sm btn-primary shadow-sm" title="Soruları Yönet"><i class="fa-solid fa-gear"></i></a>
+                                        <button class="btn btn-sm btn-warning text-dark btn-edit shadow-sm ms-1" title="Düzenle"
+                                            data-id="${survey.id}"
+                                            data-title="${survey.title}"
+                                            data-desc="${survey.description || ''}"
+                                            data-public="${survey.isPublic}">
+                                            <i class="fa-solid fa-pen"></i>
+                                        </button>
+                                        <button class="btn btn-sm btn-danger btn-delete shadow-sm ms-1" title="Sil" data-id="${survey.id}"><i class="fa-solid fa-trash"></i></button>
+                                    </td>
+                                </tr>
+                            `;
+                            tbody.append(row);
+                        });
+                    },
+                    error: function (xhr) {
+                        var tbody = $("#surveyTableBody");
+                        tbody.empty();
+                        tbody.append('<tr><td colspan="6" class="text-center text-danger fw-bold"><i class="fa-solid fa-triangle-exclamation me-2"></i> Anketler çekilemedi. API kapalı olabilir.</td></tr>');
+
+                        if(xhr.status === 401){
+                            Swal.fire('Oturum Düştü', 'Lütfen tekrar giriş yapın.', 'warning').then(()=>{
+                                window.location.href="/Auth/Login";
+                            });
+                        }
+                    }
+                });
+            }
+        });
+    </script>
+}

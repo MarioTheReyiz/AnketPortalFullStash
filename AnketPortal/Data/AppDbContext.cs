@@ -20,19 +20,13 @@ namespace AnketPortal.API.Data
             
             base.OnModelCreating(builder);
 
-            // Anket silindiğinde ona bağlı cevapları otomatik silme
-            builder.Entity<SurveyAnswer>()
-                .HasOne(sa => sa.Survey)
-                .WithMany(s => s.Answers)
-                .HasForeignKey(sa => sa.SurveyId)
-                .OnDelete(DeleteBehavior.NoAction);
 
             // Soru silindiğinde ona bağlı cevapları otomatik silme
             builder.Entity<SurveyAnswer>()
                 .HasOne(sa => sa.Question)
                 .WithMany()
                 .HasForeignKey(sa => sa.QuestionId)
-                .OnDelete(DeleteBehavior.NoAction);
+                .OnDelete(DeleteBehavior.Cascade);
         }
     }
 }

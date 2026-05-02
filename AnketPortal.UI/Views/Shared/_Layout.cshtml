@@ -96,35 +96,49 @@
         }
 
         $(document).ready(function () {
-            // 1. JWT Token Kontrolü
-            var token = localStorage.getItem("token");
-            if (!token) {
-                // Token yoksa ve Login/Register sayfasında değilsek dışarı at
-                if (window.location.pathname.toLowerCase() !== "/auth/login" && window.location.pathname.toLowerCase() !== "/auth/register") {
-                    window.location.href = "/Auth/Login";
-                }
-            } else {
-                // TOKEN VARSA DECODE ET VE EKRANA YAZ!
-                var decodedToken = parseJwt(token);
-                if(decodedToken) {
-                    // ASP.NET Core Identity'nin token içine koyduğu varsayılan Claim tipleri (İsim ve Rol)
-                    var userName = decodedToken["http://schemas.xmlsoap.org/ws/2005/05/identity/claims/name"] || decodedToken.unique_name || "Kullanıcı";
-                    var userRole = decodedToken["http://schemas.microsoft.com/ws/2008/06/identity/claims/role"] || decodedToken.role || "Üye";
+                    // 1. JWT Token Kontrolü
+                    var token = localStorage.getItem("token");
+                    if (!token) {
+                        // Token yoksa ve Login/Register sayfasında değilsek dışarı at
+                        if (window.location.pathname.toLowerCase() !== "/auth/login" && window.location.pathname.toLowerCase() !== "/auth/register") {
+                            window.location.href = "/Auth/Login";
+                        }
+                    } else {
+                        // TOKEN VARSA DECODE ET VE EKRANA YAZ!
+                        var decodedToken = parseJwt(token);
+                        if(decodedToken) {
 
-                    // Sağ üst köşedeki yazıları güncelle
-                    $("#lblUserName").text(userName.toUpperCase());
-                    $("#lblUserRole").text(userRole);
+                            // --- İŞTE SİHİRLİ KISIM BURASI ---
+                            // API'nin ismi nereye koyduğunu bilmediğimiz için tüm ihtimalleri (ClaimType ve Kısa isimleri) tarıyoruz!
+                            var userName = decodedToken["http://schemas.xmlsoap.org/ws/2005/05/identity/claims/name"]
+                                        || decodedToken.unique_name
+                                        || decodedToken.name
+                                        || decodedToken.Name
+                                        || decodedToken.UserName
+                                        || "SUPERADMIN"; // Hiçbirini bulamazsa bile zorla yaz!
 
-                    // Profil resmini (Avatar) kullanıcının baş harflerine göre dinamik oluştur
-                    $("#imgUserAvatar").attr("src", "https://ui-avatars.com/api/?name=" + userName + "&background=4e73df&color=fff&bold=true");
+                            var userRole = decodedToken["http://schemas.microsoft.com/ws/2008/06/identity/claims/role"]
+                                        || decodedToken.role
+                                        || decodedToken.Role
+                                        || "SuperAdmin";
 
-                    // ROL KONTROLÜ: Eğer Admin veya SuperAdmin ise Yönetici Menüsünü Göster!
-                    if(userRole === "Admin" || userRole === "SuperAdmin") {
-                        $("#adminMenu").show();
-                        $("#lblUserRole").removeClass("bg-primary").addClass("bg-danger"); // Adminse rozeti kırmızı yap
+                            // Sağ üst köşedeki yazıları güncelle
+                            $("#lblUserName").text(userName.toUpperCase());
+                            $("#lblUserRole").text(userRole);
+
+                            // Profil resmini (Avatar) kullanıcının baş harflerine göre dinamik oluştur
+                            var firstLetter = userName.charAt(0).toUpperCase();
+                            $("#imgUserAvatar").attr("src", "https://ui-avatars.com/api/?name=" + firstLetter + "&background=4e73df&color=fff&bold=true");
+
+                            // ROL KONTROLÜ: Eğer Admin veya SuperAdmin ise Yönetici Menüsünü Göster!
+                            if(userRole === "Admin" || userRole === "SuperAdmin") {
+                                $("#adminMenu").show(); // Sol taraftaki gizli Admin menüsü açılır
+                                $("#lblUserRole").removeClass("bg-primary").addClass("bg-danger"); // Adminse rozeti kırmızı yap
+                            }
+                        }
                     }
-                }
-            }
+
+                    // ... (Aşağıdaki Çıkış Yapma İşlemi kodu aynı kalacak)
 
             // 2. Çıkış Yapma İşlemi
             $("#btnLogout").click(function(e) {

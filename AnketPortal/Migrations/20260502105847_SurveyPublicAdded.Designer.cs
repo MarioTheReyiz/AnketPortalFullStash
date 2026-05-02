@@ -4,6 +4,7 @@ using AnketPortal.API.Data;
 using Microsoft.EntityFrameworkCore;
 using Microsoft.EntityFrameworkCore.Infrastructure;
 using Microsoft.EntityFrameworkCore.Metadata;
+using Microsoft.EntityFrameworkCore.Migrations;
 using Microsoft.EntityFrameworkCore.Storage.ValueConversion;
 
 #nullable disable
@@ -11,9 +12,11 @@ using Microsoft.EntityFrameworkCore.Storage.ValueConversion;
 namespace AnketPortal.Migrations
 {
     [DbContext(typeof(AppDbContext))]
-    partial class AppDbContextModelSnapshot : ModelSnapshot
+    [Migration("20260502105847_SurveyPublicAdded")]
+    partial class SurveyPublicAdded
     {
-        protected override void BuildModel(ModelBuilder modelBuilder)
+        /// <inheritdoc />
+        protected override void BuildTargetModel(ModelBuilder modelBuilder)
         {
 #pragma warning disable 612, 618
             modelBuilder
@@ -263,6 +266,9 @@ namespace AnketPortal.Migrations
                     b.Property<int?>("SelectedOptionId")
                         .HasColumnType("int");
 
+                    b.Property<int>("SurveyId")
+                        .HasColumnType("int");
+
                     b.Property<string>("TextAnswer")
                         .HasColumnType("nvarchar(max)");
 
@@ -276,6 +282,8 @@ namespace AnketPortal.Migrations
                     b.HasIndex("QuestionId");
 
                     b.HasIndex("SelectedOptionId");
+
+                    b.HasIndex("SurveyId");
 
                     b.ToTable("SurveyAnswers");
                 });
@@ -437,11 +445,19 @@ namespace AnketPortal.Migrations
                         .WithMany()
                         .HasForeignKey("SelectedOptionId");
 
+                    b.HasOne("AnketPortal.API.Models.Survey", "Survey")
+                        .WithMany("Answers")
+                        .HasForeignKey("SurveyId")
+                        .OnDelete(DeleteBehavior.NoAction)
+                        .IsRequired();
+
                     b.Navigation("AppUser");
 
                     b.Navigation("Question");
 
                     b.Navigation("SelectedOption");
+
+                    b.Navigation("Survey");
                 });
 
             modelBuilder.Entity("Microsoft.AspNetCore.Identity.IdentityRoleClaim<string>", b =>
@@ -509,6 +525,8 @@ namespace AnketPortal.Migrations
 
             modelBuilder.Entity("AnketPortal.API.Models.Survey", b =>
                 {
+                    b.Navigation("Answers");
+
                     b.Navigation("Questions");
                 });
 #pragma warning restore 612, 618

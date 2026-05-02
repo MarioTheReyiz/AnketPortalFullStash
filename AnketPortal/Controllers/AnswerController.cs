@@ -44,7 +44,7 @@ namespace AnketPortal.API.Controllers
 
             
             bool hasAnswered = await _answerRepo.AsQueryable()
-                .AnyAsync(a => a.AppUserId == userId && a.SurveyId == model.SurveyId);
+                .AnyAsync(a => a.AppUserId == userId && a.Question.SurveyId == model.SurveyId);
 
             if (hasAnswered)
             {
@@ -56,7 +56,7 @@ namespace AnketPortal.API.Controllers
             {
                 var answer = new SurveyAnswer
                 {
-                    SurveyId = model.SurveyId,
+               
                     QuestionId = item.QuestionId,
                     TextAnswer = item.TextAnswer,
                     SelectedOptionId = item.SelectedOptionId,
@@ -77,7 +77,7 @@ namespace AnketPortal.API.Controllers
             var userId = User.FindFirstValue(ClaimTypes.NameIdentifier);
 
             var myAnswers = await _answerRepo.AsQueryable()
-                .Where(a => a.AppUserId == userId && a.SurveyId == surveyId)
+                .Where(a => a.AppUserId == userId && a.Question.SurveyId == surveyId)
                 .Select(a => new
                 {
                     a.QuestionId,

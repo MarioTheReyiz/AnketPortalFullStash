@@ -117,7 +117,7 @@
                     success: function (response) {
                         if (response.status) {
                             // Token'ı kaydet
-                            localStorage.setItem("token", response.message);
+                            localStorage.setItem("token", response.data);
 
                             Swal.fire({
                                 icon: 'success',

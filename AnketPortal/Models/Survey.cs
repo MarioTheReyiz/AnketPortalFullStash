@@ -8,6 +8,8 @@
         public string AppUserId { get; set; } = string.Empty;
         public AppUser AppUser { get; set; } = null!; 
         public ICollection<Question> Questions { get; set; } = new List<Question>();
-        public ICollection<SurveyAnswer> Answers { get; set; } = new List<SurveyAnswer>();
+
+        public bool IsActive { get; set; } = true;
+        public bool IsPublic { get; set; } = true; // true = Herkese Açık, false = Sadece Link
     }
 }
