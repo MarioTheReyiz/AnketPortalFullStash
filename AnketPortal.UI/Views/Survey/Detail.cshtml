@@ -16,13 +16,16 @@
 
     <div class="card shadow border-left-primary">
         <div class="card-body" id="questionsList">
-            <p class="text-muted">Sorular yükleniyor...</p>
+            <div class="text-center p-5">
+                <i class="fas fa-spinner fa-spin fa-2x text-primary mb-2"></i><br>
+                Sorular Yükleniyor...
+            </div>
         </div>
     </div>
 </div>
 
 <!-- MODAL -->
-<div class="modal fade" id="questionModal" tabindex="-1">
+<div class="modal fade" id="questionModal" tabindex="-1" data-bs-backdrop="static">
     <div class="modal-dialog modal-lg">
         <div class="modal-content">
             <div class="modal-header bg-primary text-white">
@@ -36,35 +39,34 @@
 
                     <div class="mb-3">
                         <label class="form-label fw-bold">Soru Metni</label>
-                        <input type="text" class="form-control" id="txtQuestionText" placeholder="Soru metni..." required>
+                        <input type="text" class="form-control" id="txtQuestionText" placeholder="Sorduğunuz soruyu buraya yazın..." required>
                     </div>
 
-                    <!-- SORU MEDYA URL -->
                     <div class="mb-3">
                         <label class="form-label small text-muted fw-bold">Soru Görsel/Video URL (Opsiyonel)</label>
-                        <input type="text" class="form-control form-control-sm" id="txtMediaUrl" placeholder="Resim veya YouTube linki...">
+                        <input type="text" class="form-control form-control-sm" id="txtMediaUrl" placeholder="https://... (Resim veya YouTube linki)">
                     </div>
 
                     <div class="row mb-3">
                         <div class="col-md-6">
                             <label class="form-label fw-bold">Soru Tipi</label>
                             <select class="form-select" id="cbQuestionType">
-                                <option value="1">Kısa Metin</option>
-                                <option value="2">Tek Seçim (Radio)</option>
+                                <option value="1">Kısa Metin (Açık Uçlu)</option>
+                                <option value="2">Tek Seçim (Radio Button)</option>
                                 <option value="3">Çoklu Seçim (Checkbox)</option>
                             </select>
                         </div>
                         <div class="col-md-6 d-flex align-items-end pb-1">
                             <div class="form-check form-switch fs-5">
-                                <input class="form-check-input" type="checkbox" id="chkIsRequired" checked>
-                                <label class="form-check-label ms-2 fs-6">Zorunlu mu?</label>
+                                <input class="form-check-input" type="checkbox" id="chkIsRequired" checked style="cursor:pointer;">
+                                <label class="form-check-label ms-2 fs-6">Bu soru zorunlu mu?</label>
                             </div>
                         </div>
                     </div>
 
                     <div id="optionsArea" style="display:none;" class="p-3 bg-light border rounded text-center">
                         <div class="d-flex justify-content-between align-items-center mb-3">
-                            <label class="form-label fw-bold mb-0">Şıklar ve Görselleri</label>
+                            <label class="form-label fw-bold mb-0 text-primary"><i class="fa fa-list"></i> Şıklar ve Görselleri</label>
                             <button type="button" class="btn btn-sm btn-success" id="btnAddOption">
                                 <i class="fa fa-plus"></i> Şık Ekle
                             </button>
@@ -96,52 +98,61 @@
                     type: "GET",
                     headers: { "Authorization": "Bearer " + token },
                     success: function (res) {
+                        console.log("API Response:", res); // Hata ayıklama için
+
                         if (res.status) {
-                            allQuestions = res.data;
+                            allQuestions = res.data || res.Data || []; // Casing sorununu çözer
                             var html = "";
+
                             if (allQuestions.length > 0) {
                                 allQuestions.forEach(function (q, index) {
                                     var typeName = q.type == 1 ? "Metin" : (q.type == 2 ? "Radio" : "Checkbox");
+                                    var requiredBadge = q.isRequired ? '<span class="badge bg-danger ms-2">Zorunlu</span>' : '';
 
-                                    html += `<div class="card mb-4 shadow-sm border-left-info"><div class="card-body">
-                                                <div class="d-flex justify-content-between align-items-start">
-                                                    <div>
-                                                        <h5 class="fw-bold mb-1">${index + 1}. ${q.text}</h5>
-                                                        <span class="badge bg-secondary mb-2">${typeName}</span>
-                                                    </div>
-                                                    <div>
-                                                        <button class="btn btn-sm btn-outline-warning btn-edit-question" data-id="${q.id}"><i class="fa fa-pen"></i></button>
-                                                        <button class="btn btn-sm btn-outline-danger btn-delete-question" data-id="${q.id}"><i class="fa fa-trash"></i></button>
-                                                    </div>
-                                                </div>`;
+                                    html += `
+                                    <div class="card mb-4 shadow-sm border-left-info">
+                                        <div class="card-body">
+                                            <div class="d-flex justify-content-between align-items-start">
+                                                <div>
+                                                    <h5 class="fw-bold mb-1">${index + 1}. ${q.text} ${requiredBadge}</h5>
+                                                    <span class="badge bg-secondary mb-2">${typeName}</span>
+                                                </div>
+                                                <div>
+                                                    <button class="btn btn-sm btn-outline-warning btn-edit-question me-1" data-id="${q.id}"><i class="fa fa-pen"></i></button>
+                                                    <button class="btn btn-sm btn-outline-danger btn-delete-question" data-id="${q.id}"><i class="fa fa-trash"></i></button>
+                                                </div>
+                                            </div>`;
 
-                                    // Soru Medyası Gösterimi
                                     if (q.mediaUrl) {
                                         if (q.mediaUrl.includes("youtube.com") || q.mediaUrl.includes("youtu.be")) {
-                                            var vidId = q.mediaUrl.split('v=')[1] || q.mediaUrl.split('/').pop();
-                                            html += `<div class="ratio ratio-16x9 my-3 shadow-sm rounded overflow-hidden" style="max-width:400px">
+                                            var vidId = q.mediaUrl.includes('v=') ? q.mediaUrl.split('v=')[1].split('&')[0] : q.mediaUrl.split('/').pop();
+                                            html += `<div class="ratio ratio-16x9 my-3 shadow-sm rounded overflow-hidden" style="max-width:450px">
                                                         <iframe src="https://www.youtube.com/embed/${vidId}" allowfullscreen></iframe>
                                                      </div>`;
                                         } else {
-                                            html += `<img src="${q.mediaUrl}" class="img-fluid rounded my-3 shadow-sm border" style="max-height:200px;">`;
+                                            html += `<img src="${q.mediaUrl}" class="img-fluid rounded my-3 shadow-sm border" style="max-height:250px; display:block;">`;
                                         }
                                     }
 
                                     if (q.type != 1) {
                                         html += `<div class="row row-cols-1 row-cols-md-2 g-2 mt-2">`;
                                         q.options.forEach(opt => {
-                                            var imgTag = opt.imageUrl ? `<img src="${opt.imageUrl}" class="rounded me-2" style="width:30px;height:30px;object-fit:cover;border:1px solid #ddd;">` : `<i class="fa-regular fa-circle text-muted me-2"></i>`;
-                                            html += `<div class="col"><div class="p-2 border rounded bg-light d-flex align-items-center">${imgTag} ${opt.optionText}</div></div>`;
+                                            var imgTag = opt.imageUrl ? `<img src="${opt.imageUrl}" class="rounded me-2 shadow-sm" style="width:35px;height:35px;object-fit:cover;border:1px solid #eee;">` : `<i class="fa-regular fa-circle text-muted me-2"></i>`;
+                                            html += `<div class="col"><div class="p-2 border rounded bg-white d-flex align-items-center">${imgTag} <span class="small">${opt.optionText}</span></div></div>`;
                                         });
                                         html += `</div>`;
                                     }
                                     html += `</div></div>`;
                                 });
                             } else {
-                                html = '<p class="text-center text-muted my-5">Henüz soru eklenmemiş.</p>';
+                                html = '<p class="text-center text-muted my-5">Bu ankete henüz soru eklenmemiş.</p>';
                             }
                             $("#questionsList").html(html);
                         }
+                    },
+                    error: function(xhr) {
+                        console.error("Yükleme Hatası:", xhr);
+                        $("#questionsList").html('<div class="alert alert-danger">Sorular yüklenirken bir hata oluştu. Lütfen girişi kontrol edin.</div>');
                     }
                 });
             }
@@ -155,7 +166,6 @@
                 $("#questionModal").modal("show");
             });
 
-            // DÜZENLEME MODALINI AÇ
             $(document).on("click", ".btn-edit-question", function () {
                 var id = $(this).data("id");
                 var q = allQuestions.find(x => x.id == id);
@@ -163,7 +173,7 @@
                     $("#hdnQuestionId").val(q.id);
                     $("#modalTitle").text("Soruyu Düzenle");
                     $("#txtQuestionText").val(q.text);
-                    $("#txtMediaUrl").val(q.mediaUrl);
+                    $("#txtMediaUrl").val(q.mediaUrl || "");
                     $("#cbQuestionType").val(q.type);
                     $("#chkIsRequired").prop("checked", q.isRequired);
                     $("#optionsContainer").empty();
@@ -177,7 +187,7 @@
 
             $("#cbQuestionType").change(function () {
                 if ($(this).val() == "1") { $("#optionsArea").hide(); $("#optionsContainer").empty(); }
-                else { $("#optionsArea").show(); if ($(".option-row").length === 0) { addOptionInput(); addOptionInput(); } }
+                else { $("#optionsArea").show(); if ($("#optionsContainer .option-row").length === 0) { addOptionInput(); addOptionInput(); } }
             });
 
             $("#btnAddOption").click(function() { addOptionInput(); });
@@ -189,7 +199,7 @@
                             <input type="text" class="form-control form-control-sm option-input" placeholder="Şık metni..." value="${text}">
                             <button class="btn btn-sm btn-outline-danger btn-remove-option" type="button"><i class="fa fa-trash"></i></button>
                         </div>
-                        <input type="text" class="form-control form-control-sm option-image-input" placeholder="Görsel URL (Opsiyonel)" value="${img}">
+                        <input type="text" class="form-control form-control-sm option-image-input" placeholder="Görsel URL (Opsiyonel)" value="${img || ""}">
                     </div>`;
                 $("#optionsContainer").append(html);
             }
@@ -236,7 +246,6 @@
                 });
             });
 
-            // SİLME İŞLEMİ
             $(document).on("click", ".btn-delete-question", function () {
                 var id = $(this).data("id");
                 Swal.fire({ title: 'Emin misiniz?', icon: 'warning', showCancelButton: true, confirmButtonText: 'Sil' }).then((result) => {

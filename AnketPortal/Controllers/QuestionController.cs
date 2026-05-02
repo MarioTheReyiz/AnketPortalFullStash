@@ -57,8 +57,16 @@ namespace AnketPortal.API.Controllers
                     Text = q.Text,
                     Type = (int)q.Type,
                     IsRequired = q.IsRequired,
-                    Options = q.Options.Select(o => new OptionDto { Id = o.Id, OptionText = o.OptionText, Order = o.Order }).OrderBy(o => o.Order).ToList()
+                    MediaUrl = q.MediaUrl, // BU SATIRIN OLDUĞUNDAN EMİN OL
+                    Options = q.Options.Select(o => new OptionDto
+                    {
+                        Id = o.Id,
+                        OptionText = o.OptionText,
+                        ImageUrl = o.ImageUrl, // BU SATIRIN OLDUĞUNDAN EMİN OL[cite: 4]
+                        Order = o.Order
+                    }).OrderBy(o => o.Order).ToList()
                 }).ToListAsync();
+
             return Ok(new ResultDto { Status = true, Data = questions });
         }
 
