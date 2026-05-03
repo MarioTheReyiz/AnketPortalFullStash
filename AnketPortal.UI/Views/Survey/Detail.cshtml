@@ -87,14 +87,14 @@
     <script>
         var allQuestions = [];
 
-        // Token'ı her istekte localStorage'dan taze taze alması için fonksiyonlaştırdık
+        // Token okuma fonksiyonları
         function getToken() { return localStorage.getItem("token"); }
         function getRefreshToken() { return localStorage.getItem("refreshToken"); }
 
         $(document).ready(function () {
             loadQuestions();
 
-            // Refresh Token İşlemini Yapan Özel Fonksiyon
+            // REFRESH TOKEN SİSTEMİ
             function attemptRefreshToken(callbackDataFunction) {
                 var currentRefreshToken = getRefreshToken();
                 if (!currentRefreshToken) {
@@ -102,29 +102,30 @@
                     return;
                 }
 
-                // API'nin [FromBody] string refreshToken beklentisine uygun gönderim
+                // DİKKAT: Artık C# tarafındaki DTO'ya uygun JSON gönderiyoruz
+                var payload = { RefreshToken: currentRefreshToken };
+
                 $.ajax({
                     url: "https://localhost:7094/api/Auth/RefreshToken",
                     type: "POST",
                     contentType: "application/json",
-                    data: JSON.stringify(currentRefreshToken), // Sadece stringi JSON'lıyoruz
+                    data: JSON.stringify(payload),
                     success: function (res) {
                         if (res.status) {
-                            // Yeni tokenları hafızaya yaz
                             var newAccessToken = res.data.accessToken || res.data.AccessToken;
                             var newRefreshToken = res.data.refreshToken || res.data.RefreshToken;
 
                             localStorage.setItem("token", newAccessToken);
                             localStorage.setItem("refreshToken", newRefreshToken);
 
-                            // Başarılı olursa, patlayan fonksiyonu (örn: loadQuestions) tekrar çağır
-                            callbackDataFunction();
+                            console.log("Token yenilendi, işlem tekrarlanıyor.");
+                            callbackDataFunction(); // Patlayan işlemi tekrar çağır
                         } else {
                             window.location.href = "/Auth/Login";
                         }
                     },
                     error: function () {
-                        // Refresh işlemi de patlarsa direkt Login'e at
+                        // Refresh token isteği de patlarsa Login'e at
                         window.location.href = "/Auth/Login";
                     }
                 });
@@ -135,7 +136,7 @@
                 $.ajax({
                     url: "https://localhost:7094/api/Question/GetBySurvey/" + surveyId,
                     type: "GET",
-                    headers: { "Authorization": "Bearer " + getToken() }, // Hep güncel token'ı alır
+                    headers: { "Authorization": "Bearer " + getToken() },
                     success: function (res) {
                         if (res.status) {
                             allQuestions = res.data || res.Data || [];
@@ -189,12 +190,9 @@
                         }
                     },
                     error: function(xhr) {
-                        // Eğer token patladıysa (401) refresh yapmayı dene!
                         if (xhr.status === 401) {
                             attemptRefreshToken(loadQuestions);
                         } else {
-                            // Başka bir hata varsa kırmızı kutuyu bas
-                            console.error("Yükleme Hatası:", xhr.status, xhr.responseText);
                             $("#questionsList").html('<div class="alert alert-danger text-center">Sorular yüklenirken bir hata oluştu. (Hata: ' + xhr.status + ')</div>');
                         }
                     }
@@ -275,47 +273,49 @@
                 var method = qId > 0 ? "PUT" : "POST";
                 var url = qId > 0 ? "https://localhost:7094/api/Question/UpdateQuestion" : "https://localhost:7094/api/Question/AddQuestion";
 
-                $.ajax({
-                    url: url,
-                    type: method,
-                    contentType: "application/json",
-                    headers: { "Authorization": "Bearer " + getToken() }, // Güncel token'ı alır
-                    data: JSON.stringify(payload),
-                    success: function (res) {
-                        if (res.status) {
-                            $("#questionModal").modal("hide");
-                            Swal.fire("Başarılı", res.message, "success");
-                            loadQuestions();
+                var executeSave = function() {
+                    $.ajax({
+                        url: url,
+                        type: method,
+                        contentType: "application/json",
+                        headers: { "Authorization": "Bearer " + getToken() },
+                        data: JSON.stringify(payload),
+                        success: function (res) {
+                            if (res.status) {
+                                $("#questionModal").modal("hide");
+                                Swal.fire("Başarılı", res.message, "success");
+                                loadQuestions();
+                            }
+                        },
+                        error: function(xhr) {
+                            if (xhr.status === 401) {
+                                attemptRefreshToken(executeSave);
+                            } else {
+                                Swal.fire('Hata!', 'Kayıt sırasında bir sorun oluştu.', 'error');
+                            }
                         }
-                    },
-                    error: function(xhr) {
-                        // Eğer token patladıysa (401) refresh yapıp fonksiyonu tekrar çağır
-                        if (xhr.status === 401) {
-                            attemptRefreshToken(function() { $("#btnSaveQuestion").click(); });
-                        } else {
-                            Swal.fire('Hata!', 'Kayıt sırasında bir sorun oluştu.', 'error');
-                        }
-                    }
-                });
+                    });
+                };
+
+                executeSave();
             });
 
             $(document).on("click", ".btn-delete-question", function () {
                 var id = $(this).data("id");
                 Swal.fire({ title: 'Emin misiniz?', icon: 'warning', showCancelButton: true, confirmButtonText: 'Sil' }).then((result) => {
                     if (result.isConfirmed) {
-                        // SİLME İŞLEMİNİ DE AYRI BİR FONKSİYON GİBİ ÇALIŞTIRIYORUZ Kİ REFRESH OLABİLSİN
-                        var deleteFunction = function() {
+                        var executeDelete = function() {
                             $.ajax({
                                 url: "https://localhost:7094/api/Question/" + id,
                                 type: "DELETE",
-                                headers: { "Authorization": "Bearer " + getToken() }, // Güncel token'ı alır
+                                headers: { "Authorization": "Bearer " + getToken() },
                                 success: function () { loadQuestions(); },
                                 error: function(xhr) {
-                                    if (xhr.status === 401) attemptRefreshToken(deleteFunction);
+                                    if (xhr.status === 401) attemptRefreshToken(executeDelete);
                                 }
                             });
                         };
-                        deleteFunction(); // Silme işlemini başlat
+                        executeDelete();
                     }
                 });
             });

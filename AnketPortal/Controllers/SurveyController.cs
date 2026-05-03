@@ -1,6 +1,7 @@
 ﻿using AnketPortal.API.DTOs;
 using AnketPortal.API.Models;
 using AnketPortal.API.Repositories;
+using AnketPortal.API.Data; // AppDbContext için eklendi
 using Microsoft.AspNetCore.Authorization;
 using Microsoft.AspNetCore.Mvc;
 using System.Security.Claims;
@@ -8,7 +9,6 @@ using Microsoft.EntityFrameworkCore;
 
 namespace AnketPortal.API.Controllers
 {
-
     [Route("api/[controller]")]
     [ApiController]
     public class SurveyController : ControllerBase
@@ -17,14 +17,20 @@ namespace AnketPortal.API.Controllers
         private readonly IGenericRepository<Question> _questionRepo;
         private readonly IGenericRepository<QuestionOption> _optionRepo;
 
+        // 1. AppDbContext tanımlandı
+        private readonly AppDbContext _context;
+
+        // 2. AppDbContext Constructor'a eklendi
         public SurveyController(
             IGenericRepository<Survey> surveyRepo,
             IGenericRepository<Question> questionRepo,
-            IGenericRepository<QuestionOption> optionRepo)
+            IGenericRepository<QuestionOption> optionRepo,
+            AppDbContext context)
         {
             _surveyRepo = surveyRepo;
             _questionRepo = questionRepo;
             _optionRepo = optionRepo;
+            _context = context; // Ataması yapıldı
         }
 
         // Aktif Anketleri Listeleme ve Arama (GÜNCELLENDİ: Yönetici her şeyi görebilir ve eksik veriler eklendi)
@@ -147,7 +153,6 @@ namespace AnketPortal.API.Controllers
             return Ok(new ResultDto { Status = true, Message = "Soru başarıyla eklendi." });
         }
 
-        // Soruya Şık Ekleme (ORİJİNAL HALİYLE DURUYOR)
         // Soruya Şık Ekleme (Düzeltildi)
         [Authorize(Roles = "Admin,SuperAdmin")]
         [HttpPost("AddOption")]
@@ -204,6 +209,30 @@ namespace AnketPortal.API.Controllers
             await _surveyRepo.SaveAsync();
 
             return Ok(new ResultDto { Status = true, Message = "Anket ve ona bağlı tüm veriler veritabanından kalıcı olarak silindi!" });
+        }
+
+        [HttpGet("GetDashboardStats")]
+        public async Task<IActionResult> GetDashboardStats()
+        {
+            // Veritabanından gerçek ve canlı verileri sayıyoruz
+            var totalSurveys = await _context.Surveys.CountAsync();
+            var activeSurveys = await _context.Surveys.CountAsync(s => s.IsActive);
+            var totalQuestions = await _context.Questions.CountAsync();
+
+            // Not: AppDbContext içinde SurveyAnswers DbSet'in tanımlı olduğunu varsayıyoruz. 
+            // Eğer DbSet adın farklıysa (örneğin Answers ise) orayı _context.Answers olarak değiştir.
+            var totalAnswers = await _context.SurveyAnswers.CountAsync();
+
+            // Verileri isimsiz (anonymous) bir objede paketleyip UI'a gönderiyoruz
+            var stats = new
+            {
+                TotalSurveys = totalSurveys,
+                ActiveSurveys = activeSurveys,
+                TotalQuestions = totalQuestions,
+                TotalAnswers = totalAnswers
+            };
+
+            return Ok(new ResultDto { Status = true, Data = stats });
         }
     }
 }

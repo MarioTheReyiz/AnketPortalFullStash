@@ -88,34 +88,37 @@ namespace AnketPortal.API.Controllers
         }
 
         // Frontend'den gelecek nesneyi karşılayacak basit sınıf
+        // Bu küçük sınıfı AuthController.cs içine (veya DTOs klasörüne) ekle
         public class RefreshTokenRequestDto
         {
             public string RefreshToken { get; set; }
         }
 
-        [HttpPost("RefreshToken")] // Jeton Yenileme API'si
+        // Mevcut RefreshToken metodunu şununla değiştir:
+        [HttpPost("RefreshToken")]
         public async Task<IActionResult> RefreshToken([FromBody] RefreshTokenRequestDto model)
         {
+            // model null ise veya içi boşsa
             if (string.IsNullOrEmpty(model?.RefreshToken))
                 return BadRequest(new ResultDto { Status = false, Message = "Refresh Token boş olamaz." });
 
-            // Veritabanında bu refresh token'a sahip kullanıcıyı bul
+            // Veritabanında bu token'a sahip kullanıcıyı bul
             var user = await _userManager.Users.FirstOrDefaultAsync(u => u.RefreshToken == model.RefreshToken);
 
             if (user == null || user.RefreshTokenEndDate < DateTime.Now)
-                return Unauthorized(new ResultDto { Status = false, Message = "Oturum süresi dolmuş veya geçersiz jeton. Lütfen tekrar giriş yapın." });
+                return Unauthorized(new ResultDto { Status = false, Message = "Geçersiz veya süresi dolmuş token." });
 
             var roles = await _userManager.GetRolesAsync(user);
 
-            // Yeni jetonları üret
+            // Yeni token üret
             var tokenResponse = _tokenService.GenerateToken(user, roles);
 
-            // Veritabanındaki refresh token bilgilerini tazele
+            // Veritabanını güncelle
             user.RefreshToken = tokenResponse.RefreshToken;
             user.RefreshTokenEndDate = DateTime.Now.AddDays(7);
             await _userManager.UpdateAsync(user);
 
-            return Ok(new ResultDto { Status = true, Message = "Jeton başarıyla yenilendi", Data = tokenResponse });
+            return Ok(new ResultDto { Status = true, Message = "Yenilendi", Data = tokenResponse });
         }
     }
 }
