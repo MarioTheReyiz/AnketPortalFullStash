@@ -92,6 +92,17 @@ namespace AnketPortal.API.Controllers
             };
 
             await _surveyRepo.AddAsync(survey);
+            var log = new SystemLog
+            {
+                Action = "Yeni Anket",
+                Message = $"'{survey.Title}' adlı anket oluşturuldu.",
+                Username = User.Identity?.Name ?? "Sistem",
+                Color = "bg-success",
+                Icon = "fa-plus-circle",
+                CreatedDate = DateTime.Now
+            };
+            _context.SystemLogs.Add(log);
+            await _context.SaveChangesAsync();
             await _surveyRepo.SaveAsync();
 
             return Ok(new ResultDto { Status = true, Message = "Anket başarıyla oluşturuldu." });
@@ -111,6 +122,17 @@ namespace AnketPortal.API.Controllers
             survey.IsPublic = model.IsPublic;
 
             _surveyRepo.Update(survey);
+            var log = new SystemLog
+            {
+                Action = "Yeni Anket",
+                Message = $"'{survey.Title}' adlı anket güncellendi.",
+                Username = User.Identity?.Name ?? "Sistem",
+                Color = "bg-success",
+                Icon = "fa-plus-circle",
+                CreatedDate = DateTime.Now
+            };
+            _context.SystemLogs.Add(log);
+            await _context.SaveChangesAsync();
             await _surveyRepo.SaveAsync();
 
             return Ok(new ResultDto { Status = true, Message = "Anket başarıyla güncellendi." });
@@ -220,6 +242,17 @@ namespace AnketPortal.API.Controllers
 
             survey.IsActive = false;
             _surveyRepo.Update(survey);
+            var log = new SystemLog
+            {
+                Action = "Yeni Anket",
+                Message = $"'{survey.Title}' adlı anket silindi.",
+                Username = User.Identity?.Name ?? "Sistem",
+                Color = "bg-success",
+                Icon = "fa-plus-circle",
+                CreatedDate = DateTime.Now
+            };
+            _context.SystemLogs.Add(log);
+            await _context.SaveChangesAsync();
             await _surveyRepo.SaveAsync();
 
             return Ok(new ResultDto { Status = true, Message = "Anket başarıyla silindi (pasife alındı)." });
@@ -257,6 +290,76 @@ namespace AnketPortal.API.Controllers
             };
 
             return Ok(new ResultDto { Status = true, Data = stats });
+        }
+        // --- YENİ: DİNAMİK BİLDİRİMLER (Sistemdeki verilere göre otomatik üretilir) ---
+        [Authorize]
+        [HttpGet("GetNotifications")]
+        public async Task<IActionResult> GetNotifications()
+        {
+            var notifications = new List<object>();
+
+            // 1. Son Eklenen Anket (Eğer varsa)
+            var lastSurvey = await _context.Surveys.OrderByDescending(s => s.Id).FirstOrDefaultAsync();
+            if (lastSurvey != null)
+            {
+                notifications.Add(new
+                {
+                    Icon = "fa-clipboard-check",
+                    Color = "bg-success",
+                    Time = lastSurvey.CreatedDate.ToString("dd.MM.yyyy HH:mm"),
+                    Message = $"Sisteme '{lastSurvey.Title}' adlı yeni bir anket eklendi."
+                });
+            }
+
+            // 2. Pasif Anket Uyarısı
+            var passiveCount = await _context.Surveys.CountAsync(s => !s.IsActive);
+            if (passiveCount > 0)
+            {
+                notifications.Add(new
+                {
+                    Icon = "fa-triangle-exclamation",
+                    Color = "bg-warning",
+                    Time = "Sistem Uyarısı",
+                    Message = $"Şu an yayında olmayan {passiveCount} adet pasif anketiniz bulunuyor."
+                });
+            }
+
+            // 3. Yanıt / Etkileşim Bilgisi
+            var totalAnswers = await _context.SurveyAnswers.CountAsync();
+            if (totalAnswers > 0)
+            {
+                notifications.Add(new
+                {
+                    Icon = "fa-chart-line",
+                    Color = "bg-info",
+                    Time = "İstatistik",
+                    Message = $"Harika! Anketleriniz bugüne kadar toplam {totalAnswers} kez yanıtlandı."
+                });
+            }
+
+            return Ok(new ResultDto { Status = true, Data = notifications });
+        }
+        [Authorize(Roles = "Admin,SuperAdmin")]
+        [HttpGet("GetSystemLogs")]
+        public async Task<IActionResult> GetSystemLogs()
+        {
+            // En son eklenen 50 logu getir
+            var logs = await _context.SystemLogs
+                .OrderByDescending(l => l.CreatedDate)
+                .Take(50)
+                .Select(l => new
+                {
+                    l.Id,
+                    l.Action,
+                    l.Message,
+                    l.Username,
+                    l.Color,
+                    l.Icon,
+                    Time = l.CreatedDate.ToString("dd.MM.yyyy HH:mm")
+                })
+                .ToListAsync();
+
+            return Ok(new ResultDto { Status = true, Data = logs });
         }
     }
 }

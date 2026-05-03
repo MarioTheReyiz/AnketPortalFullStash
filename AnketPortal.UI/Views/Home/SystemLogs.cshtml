@@ -1,0 +1,82 @@
+﻿@{
+    ViewData["Title"] = "Sistem Logları";
+}
+
+<div class="container-fluid mt-4">
+    <div class="d-sm-flex align-items-center justify-content-between mb-4">
+        <h1 class="h3 mb-0 text-gray-800 fw-bold"><i class="fa-solid fa-server text-primary me-2"></i> Sistem Logları ve Olay Geçmişi</h1>
+        <p class="text-muted mb-0">Sistemde yapılan tüm kritik işlemlerin denetim izleri.</p>
+    </div>
+
+    <div class="card shadow border-0 mb-4">
+        <div class="card-header bg-white py-3 d-flex justify-content-between align-items-center">
+            <h6 class="m-0 fw-bold text-primary"><i class="fa-solid fa-list-ul me-1"></i> Olay Kayıtları</h6>
+            <button class="btn btn-sm btn-outline-secondary" onclick="loadLogs()"><i class="fa-solid fa-rotate-right"></i> Yenile</button>
+        </div>
+        <div class="card-body p-0">
+            <div class="table-responsive">
+                <table class="table table-hover align-middle mb-0">
+                    <thead class="table-light text-muted">
+                        <tr>
+                            <th class="ps-4" style="width: 50px;">Tip</th>
+                            <th>Eylem</th>
+                            <th>Detay</th>
+                            <th>Kullanıcı</th>
+                            <th class="text-end pe-4">Tarih</th>
+                        </tr>
+                    </thead>
+                    <tbody id="logTableBody">
+                        <tr><td colspan="5" class="text-center text-muted py-5"><i class="fas fa-spinner fa-spin fa-2x mb-3 text-primary"></i><br>Loglar Yükleniyor...</td></tr>
+                    </tbody>
+                </table>
+            </div>
+        </div>
+    </div>
+</div>
+
+@section Scripts {
+    <script>
+        function loadLogs() {
+            var token = localStorage.getItem("token");
+            var tbody = $("#logTableBody");
+            tbody.html('<tr><td colspan="5" class="text-center text-muted py-5"><i class="fas fa-spinner fa-spin fa-2x mb-3 text-primary"></i><br>Yükleniyor...</td></tr>');
+
+            $.ajax({
+                url: "https://localhost:7094/api/Survey/GetSystemLogs",
+                type: "GET",
+                headers: { "Authorization": "Bearer " + token },
+                success: function (res) {
+                    tbody.empty();
+                    if (res.status && res.data && res.data.length > 0) {
+                        res.data.forEach(function (log) {
+                            var row = `
+                                <tr>
+                                    <td class="ps-4">
+                                        <div class="${log.color} rounded-circle d-flex align-items-center justify-content-center text-white shadow-sm" style="width: 35px; height: 35px;">
+                                            <i class="fa-solid ${log.icon}"></i>
+                                        </div>
+                                    </td>
+                                    <td class="fw-bold">${log.action}</td>
+                                    <td class="text-muted">${log.message}</td>
+                                    <td><span class="badge bg-secondary"><i class="fa-solid fa-user me-1"></i> ${log.username}</span></td>
+                                    <td class="text-end pe-4 text-muted small"><i class="fa-regular fa-clock me-1"></i> ${log.time}</td>
+                                </tr>
+                            `;
+                            tbody.append(row);
+                        });
+                    } else {
+                        tbody.html('<tr><td colspan="5" class="text-center text-muted py-5"><i class="fa-solid fa-ghost fa-3x mb-3 opacity-50"></i><br>Sistemde henüz kayıtlı bir olay yok.</td></tr>');
+                    }
+                },
+                error: function (xhr) {
+                    tbody.html('<tr><td colspan="5" class="text-center text-danger py-5"><i class="fa-solid fa-triangle-exclamation fa-2x mb-3"></i><br>Loglar çekilemedi!</td></tr>');
+                    if(xhr.status === 401) { window.location.href = "/Auth/Login"; }
+                }
+            });
+        }
+
+        $(document).ready(function () {
+            loadLogs();
+        });
+    </script>
+}

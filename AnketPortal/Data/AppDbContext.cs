@@ -15,6 +15,8 @@ namespace AnketPortal.API.Data
         public DbSet<QuestionOption> QuestionOptions { get; set; }
         public DbSet<SurveyAnswer> SurveyAnswers { get; set; }
 
+        public DbSet<SystemLog> SystemLogs { get; set; }
+
         protected override void OnModelCreating(ModelBuilder builder)
         {
             base.OnModelCreating(builder);

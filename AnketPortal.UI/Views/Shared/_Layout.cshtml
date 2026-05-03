@@ -157,6 +157,33 @@
             body.dark-mode .text-muted {
                 color: #9ca3af !important;
             }
+
+            body.dark-mode .dropdown-menu {
+                background-color: #1f2937 !important;
+                border: 1px solid #333 !important;
+            }
+
+            body.dark-mode .dropdown-item {
+                color: #e0e0e0 !important;
+            }
+
+                body.dark-mode .dropdown-item:hover {
+                    background-color: #2c344a !important;
+                    color: #fff !important;
+                }
+
+                body.dark-mode .dropdown-item .text-dark {
+                    color: #e0e0e0 !important;
+                }
+
+            body.dark-mode .dropdown-header {
+                background-color: #283046 !important;
+                border-bottom: 1px solid #333;
+            }
+
+            body.dark-mode .border-bottom {
+                border-color: #333 !important;
+            }
     </style>
     @await RenderSectionAsync("Styles", required: false)
 </head>
@@ -166,15 +193,15 @@
         <nav class="sidebar">
             <div class="brand"><i class="fa-solid fa-square-poll-vertical"></i> ANKET API</div>
             <a href="/Home/Index" id="navHome"><i class="fa-solid fa-house me-2"></i> Ana Sayfa</a>
-            <a href="/Survey/Index" id="navSurveys"><i class="fa-solid fa-list-check me-2"></i> Tüm Anketler</a>
 
             <div id="adminMenu" style="display:none;">
                 <div class="px-3 pt-3 pb-1 text-uppercase text-white-50" style="font-size: 0.75rem;">Yönetici Alanı</div>
-                <a href="/Survey/Manage"><i class="fa-solid fa-gear me-2"></i> Anket Yönetimi</a>
+                <a href="/Survey/Index"><i class="fa-solid fa-gear me-2"></i> Anket Yönetimi</a>
             </div>
 
             <div id="superAdminMenu" style="display:none;">
                 <a href="/Home/Users"><i class="fa-solid fa-users-gear me-2"></i> Kullanıcı Yönetimi</a>
+                <a href="/Home/SystemLogs"><i class="fa-solid fa-server me-2"></i> Sistem Logları</a>
             </div>
 
             <a href="#" id="btnLogout" class="mt-auto bg-danger text-white border-0"><i class="fa-solid fa-right-from-bracket me-2"></i> Çıkış Yap</a>
@@ -185,9 +212,31 @@
                 <h4 class="m-0 text-secondary fw-bold" id="pageTitle">@ViewData["Title"]</h4>
 
                 <div class="d-flex align-items-center">
+
+                    <!-- YENİ EKLENEN BİLDİRİM ÇANI -->
+                    <div class="dropdown me-3">
+                        <button class="btn btn-sm btn-outline-secondary rounded-circle position-relative border-0" type="button" id="notificationDropdown" data-bs-toggle="dropdown" aria-expanded="false" title="Bildirimler">
+                            <i class="fa-solid fa-bell fs-5 text-gray-800"></i>
+                            <!-- Kırmızı Okunmamış Bildirim Sayacı (Dinamik) -->
+                            <span class="position-absolute top-0 start-100 translate-middle badge rounded-pill bg-danger border border-light" style="font-size: 0.60rem; padding: 0.25em 0.4em; display:none;" id="notificationCount">
+                                0
+                            </span>
+                        </button>
+                        <ul class="dropdown-menu dropdown-menu-end shadow border-0 mt-2" aria-labelledby="notificationDropdown" style="width: 300px;">
+                            <li class="dropdown-header bg-primary text-white fw-bold py-2 rounded-top">Bildirim Merkezi</li>
+
+                            <!-- BİLDİRİMLER AJAX İLE BURAYA GELECEK -->
+                            <div id="notificationList" style="max-height: 300px; overflow-y: auto;">
+                                <div class="text-center py-3 text-muted"><i class="fas fa-spinner fa-spin"></i> Yükleniyor...</div>
+                            </div>
+
+                            <li><a class="dropdown-item text-center small text-muted bg-light py-2 fw-bold" href="#" id="btnReadAll"><i class="fa-solid fa-check-double me-1"></i> Tümünü Okundu İşaretle</a></li>
+                        </ul>
+                    </div>
+                    <!-- BİLDİRİM ÇANI BİTİŞ -->
                     <!-- DARK MODE BUTONU -->
-                    <button id="btnDarkModeToggle" class="btn btn-sm btn-outline-secondary rounded-circle me-3" title="Karanlık/Aydınlık Tema">
-                        <i class="fa-solid fa-moon" id="iconTheme"></i>
+                    <button id="btnDarkModeToggle" class="btn btn-sm btn-outline-secondary rounded-circle me-3 border-0" title="Karanlık/Aydınlık Tema">
+                        <i class="fa-solid fa-moon fs-5 text-gray-800" id="iconTheme"></i>
                     </button>
 
                     <a href="/Home/Profile" class="d-flex align-items-center text-decoration-none p-2 rounded" style="cursor: pointer;">
@@ -260,38 +309,37 @@
                     var userRole = decodedToken["http://schemas.microsoft.com/ws/2008/06/identity/claims/role"] || decodedToken.role || decodedToken.Role || "User";
                     $("#lblUserRole").text(userRole);
 
-                    // Başlangıç olarak Token'dan bir isim bas (Beklerken boş görünmesin)
-                    var tempName = decodedToken.FullName || decodedToken["http://schemas.xmlsoap.org/ws/2005/05/identity/claims/name"] || "Kullanıcı";
+                    // Başlangıç olarak Token'dan KULLANICI ADI bas (Beklerken boş görünmesin)
+                    var tempName = decodedToken.unique_name || decodedToken["http://schemas.xmlsoap.org/ws/2005/05/identity/claims/name"] || "Kullanıcı";
                     $("#lblUserName").text(tempName.toUpperCase());
 
                     var firstLetter = tempName.charAt(0).toUpperCase();
                     var defaultAvatar = "https://ui-avatars.com/api/?name=" + firstLetter + "&background=4e73df&color=fff&bold=true";
                     $("#imgUserAvatar").attr("src", defaultAvatar);
 
-                    // YENİ EKLENEN KISIM: TOKEN EXPIRE (401) KONTROLLÜ AJAX SORGUSU
+                    // TOKEN EXPIRE (401) KONTROLLÜ AJAX SORGUSU - Profil Bilgileri
                     $.ajax({
                         url: "https://localhost:7094/api/Auth/GetProfile",
                         type: "GET",
                         headers: { "Authorization": "Bearer " + token },
                         success: function(res) {
                             if (res.status && res.data) {
-                                // 1. GERÇEK İSMİ YAZ (API'den ne geldiyse kesin o yazılır)
-                                if(res.data.fullName) {
-                                    $("#lblUserName").text(res.data.fullName.toUpperCase());
+                                // 1. GERÇEK KULLANICI ADINI YAZ (UserName)
+                                if(res.data.userName) {
+                                    $("#lblUserName").text(res.data.userName.toUpperCase());
                                 }
 
                                 // 2. FOTOĞRAFI BAS
                                 if(res.data.profilePhoto && res.data.profilePhoto.length > 50) {
                                     $("#imgUserAvatar").attr("src", res.data.profilePhoto);
                                 } else {
-                                    // Fotoğraf yoksa gerçek ismin baş harfinden avatar yap
-                                    var realFirstLetter = (res.data.fullName || "U").charAt(0).toUpperCase();
+                                    // Fotoğraf yoksa kullanıcı adının baş harfinden avatar yap
+                                    var realFirstLetter = (res.data.userName || "U").charAt(0).toUpperCase();
                                     $("#imgUserAvatar").attr("src", "https://ui-avatars.com/api/?name=" + realFirstLetter + "&background=4e73df&color=fff&bold=true");
                                 }
                             }
                         },
                         error: function(xhr) {
-                            // EĞER HERHANGİ BİR SAYFADA GEZERKEN TOKEN BİTERSE/GEÇERSİZ OLURSA
                             if(xhr.status === 401) {
                                 Swal.fire({
                                     icon: 'warning',
@@ -305,6 +353,69 @@
                             }
                         }
                     });
+
+                    // --- DİNAMİK BİLDİRİMLERİ YÜKLE VE OKUNDU İŞARETLE ---
+                    function loadNotifications() {
+                        $.ajax({
+                            url: "https://localhost:7094/api/Survey/GetNotifications",
+                            type: "GET",
+                            headers: { "Authorization": "Bearer " + token },
+                            success: function(res) {
+                                if (res.status && res.data) {
+                                    var notifs = res.data;
+                                    var html = "";
+
+                                    // Hafızadan daha önce okunan bildirim sayısını al
+                                    var readCount = parseInt(localStorage.getItem("readNotifCount")) || 0;
+
+                                    // Sisteme yeni bir şey eklendiyse (bildirim sayısı arttıysa)
+                                    var unreadCount = notifs.length - readCount;
+
+                                    if (unreadCount > 0) {
+                                        $("#notificationCount").text(unreadCount).show(); // Kırmızı balonu göster
+                                    } else {
+                                        $("#notificationCount").hide(); // Gizle
+                                    }
+
+                                    if(notifs.length === 0) {
+                                        html = '<li><span class="dropdown-item text-center text-muted py-3">Yeni bildiriminiz yok.</span></li>';
+                                    } else {
+                                        notifs.forEach(function(n) {
+                                            html += `
+                                                <li>
+                                                    <a class="dropdown-item d-flex align-items-center py-3 border-bottom" href="#">
+                                                        <div class="me-3">
+                                                            <div class="${n.color} rounded-circle d-flex align-items-center justify-content-center text-white" style="width: 40px; height: 40px;">
+                                                                <i class="fa-solid ${n.icon}"></i>
+                                                            </div>
+                                                        </div>
+                                                        <div>
+                                                            <div class="small text-muted">${n.time}</div>
+                                                            <span class="text-dark text-wrap fw-bold" style="font-size: 0.85rem;">${n.message}</span>
+                                                        </div>
+                                                    </a>
+                                                </li>
+                                            `;
+                                        });
+                                    }
+
+                                    $("#notificationList").html(html);
+
+                                    // Tümünü Oku Butonuna Tıklanınca
+                                    $("#btnReadAll").off("click").on("click", function(e) {
+                                        e.preventDefault();
+                                        // Toplam bildirim sayısını hafızaya kaydet
+                                        localStorage.setItem("readNotifCount", notifs.length);
+                                        $("#notificationCount").fadeOut(); // Balonu yavaşça sil
+                                    });
+                                }
+                            }
+                        });
+                    }
+
+                    // Sayfa açıldığında bildirimleri çalıştır
+                    loadNotifications();
+
 
                     if(userRole === "Admin" || userRole === "SuperAdmin") {
                         $("#adminMenu").show();
