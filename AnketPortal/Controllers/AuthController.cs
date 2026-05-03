@@ -186,22 +186,31 @@ namespace AnketPortal.API.Controllers
         }
 
         // --- YENİ: KULLANICI PROFİLİNİ GETİR ---
+        // --- ZIRHLI: KULLANICI PROFİLİNİ GETİR ---
         [Authorize]
         [HttpGet("GetProfile")]
         public async Task<IActionResult> GetProfile()
         {
-            // Token'dan giriş yapan kişinin ID'sini alıyoruz
-            var userId = User.FindFirstValue(ClaimTypes.NameIdentifier);
-            var user = await _userManager.FindByIdAsync(userId);
+            // 1. Önce kullanıcının adından (Username) bulmayı dener
+            var userName = User.Identity?.Name ?? User.FindFirstValue(ClaimTypes.Name) ?? User.FindFirstValue("unique_name");
+            var user = await _userManager.FindByNameAsync(userName ?? "");
 
-            if (user == null) return NotFound(new ResultDto { Status = false, Message = "Kullanıcı bulunamadı" });
+            // 2. Bulamazsa ID'sinden bulmayı dener
+            if (user == null)
+            {
+                var userId = User.FindFirstValue(ClaimTypes.NameIdentifier) ?? User.FindFirstValue("sub");
+                user = await _userManager.FindByIdAsync(userId ?? "");
+            }
+
+            if (user == null) return NotFound(new ResultDto { Status = false, Message = "Kullanıcı bulunamadı, token geçersiz." });
 
             var roles = await _userManager.GetRolesAsync(user);
 
             var profile = new UserProfileDto
             {
                 UserName = user.UserName,
-                FullName = user.FullName,
+                // Eğer veritabanında FullName boşsa, ekrana isimsiz çıkmasın diye UserName'i yazar
+                FullName = string.IsNullOrEmpty(user.FullName) ? user.UserName : user.FullName,
                 Email = user.Email,
                 PhoneNumber = user.PhoneNumber,
                 ProfilePhoto = user.ProfilePhoto,
@@ -211,13 +220,19 @@ namespace AnketPortal.API.Controllers
             return Ok(new ResultDto { Status = true, Data = profile });
         }
 
-        // --- YENİ: KULLANICI PROFİLİNİ GÜNCELLE ---
+        // --- ZIRHLI: KULLANICI PROFİLİNİ GÜNCELLE ---
         [Authorize]
         [HttpPut("UpdateProfile")]
         public async Task<IActionResult> UpdateProfile([FromBody] UpdateProfileDto model)
         {
-            var userId = User.FindFirstValue(ClaimTypes.NameIdentifier);
-            var user = await _userManager.FindByIdAsync(userId);
+            var userName = User.Identity?.Name ?? User.FindFirstValue(ClaimTypes.Name) ?? User.FindFirstValue("unique_name");
+            var user = await _userManager.FindByNameAsync(userName ?? "");
+
+            if (user == null)
+            {
+                var userId = User.FindFirstValue(ClaimTypes.NameIdentifier) ?? User.FindFirstValue("sub");
+                user = await _userManager.FindByIdAsync(userId ?? "");
+            }
 
             if (user == null) return NotFound(new ResultDto { Status = false, Message = "Kullanıcı bulunamadı" });
 
@@ -225,7 +240,6 @@ namespace AnketPortal.API.Controllers
             user.Email = model.Email;
             user.PhoneNumber = model.PhoneNumber;
 
-            // Eğer yeni bir fotoğraf seçilmişse/gönderilmişse güncelle
             if (!string.IsNullOrEmpty(model.ProfilePhoto))
             {
                 user.ProfilePhoto = model.ProfilePhoto;
