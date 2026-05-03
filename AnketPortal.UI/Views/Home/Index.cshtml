@@ -1,51 +1,40 @@
 ﻿@{
-    ViewData["Title"] = "Yönetim Paneli";
+    ViewData["Title"] = "Ana Sayfa - Dashboard";
 }
 
 <div class="container-fluid mt-4">
-    <!-- Sayfa Başlığı -->
+    <!-- Başlık -->
     <div class="d-sm-flex align-items-center justify-content-between mb-4">
-        <h1 class="h3 mb-0 text-gray-800 fw-bold"><i class="fa-solid fa-chart-pie text-primary me-2"></i> Sistem Özeti</h1>
-        <a href="/Survey/Index" class="d-none d-sm-inline-block btn btn-sm btn-primary shadow-sm">
-            <i class="fas fa-plus fa-sm text-white-50"></i> Anketlere Git
-        </a>
+        <h1 class="h3 mb-0 text-gray-800 fw-bold"><i class="fa-solid fa-gauge-high text-primary me-2"></i> Dashboard</h1>
     </div>
 
-    <!-- İstatistik Kartları -->
+    <!-- 4 KART (Üstteki Sayılar) -->
     <div class="row">
         <!-- Toplam Anket -->
         <div class="col-xl-3 col-md-6 mb-4">
-            <div class="card shadow h-100 py-2 border-0" style="border-left: 5px solid #4e73df !important;">
+            <div class="card shadow h-100 py-2 border-0 border-start border-primary border-5">
                 <div class="card-body">
                     <div class="row no-gutters align-items-center">
                         <div class="col mr-2">
-                            <div class="text-xs fw-bold text-primary text-uppercase mb-1" style="letter-spacing: 0.05em;">
-                                Toplam Anket
-                            </div>
-                            <div class="h3 mb-0 fw-bold text-gray-800" id="statTotalSurveys">0</div>
+                            <div class="text-xs fw-bold text-primary text-uppercase mb-1">Toplam Anket</div>
+                            <div class="h5 mb-0 fw-bold text-gray-800" id="statTotalSurveys">0</div>
                         </div>
-                        <div class="col-auto">
-                            <i class="fas fa-clipboard-list fa-2x text-gray-300" style="opacity: 0.5;"></i>
-                        </div>
+                        <div class="col-auto"><i class="fa-solid fa-list-check fa-2x text-gray-300 opacity-50"></i></div>
                     </div>
                 </div>
             </div>
         </div>
 
-        <!-- Aktif Anketler -->
+        <!-- Aktif Anket -->
         <div class="col-xl-3 col-md-6 mb-4">
-            <div class="card shadow h-100 py-2 border-0" style="border-left: 5px solid #1cc88a !important;">
+            <div class="card shadow h-100 py-2 border-0 border-start border-success border-5">
                 <div class="card-body">
                     <div class="row no-gutters align-items-center">
                         <div class="col mr-2">
-                            <div class="text-xs fw-bold text-success text-uppercase mb-1" style="letter-spacing: 0.05em;">
-                                Yayındaki (Aktif)
-                            </div>
-                            <div class="h3 mb-0 fw-bold text-gray-800" id="statActiveSurveys">0</div>
+                            <div class="text-xs fw-bold text-success text-uppercase mb-1">Aktif Anketler</div>
+                            <div class="h5 mb-0 fw-bold text-gray-800" id="statActiveSurveys">0</div>
                         </div>
-                        <div class="col-auto">
-                            <i class="fas fa-check-circle fa-2x text-gray-300" style="opacity: 0.5;"></i>
-                        </div>
+                        <div class="col-auto"><i class="fa-solid fa-play fa-2x text-gray-300 opacity-50"></i></div>
                     </div>
                 </div>
             </div>
@@ -53,18 +42,14 @@
 
         <!-- Toplam Soru -->
         <div class="col-xl-3 col-md-6 mb-4">
-            <div class="card shadow h-100 py-2 border-0" style="border-left: 5px solid #f6c23e !important;">
+            <div class="card shadow h-100 py-2 border-0 border-start border-info border-5">
                 <div class="card-body">
                     <div class="row no-gutters align-items-center">
                         <div class="col mr-2">
-                            <div class="text-xs fw-bold text-warning text-uppercase mb-1" style="letter-spacing: 0.05em;">
-                                Toplam Soru Sayısı
-                            </div>
-                            <div class="h3 mb-0 fw-bold text-gray-800" id="statTotalQuestions">0</div>
+                            <div class="text-xs fw-bold text-info text-uppercase mb-1">Toplam Soru</div>
+                            <div class="h5 mb-0 fw-bold text-gray-800" id="statTotalQuestions">0</div>
                         </div>
-                        <div class="col-auto">
-                            <i class="fas fa-comments fa-2x text-gray-300" style="opacity: 0.5;"></i>
-                        </div>
+                        <div class="col-auto"><i class="fa-solid fa-circle-question fa-2x text-gray-300 opacity-50"></i></div>
                     </div>
                 </div>
             </div>
@@ -72,79 +57,93 @@
 
         <!-- Toplam Yanıt -->
         <div class="col-xl-3 col-md-6 mb-4">
-            <div class="card shadow h-100 py-2 border-0" style="border-left: 5px solid #36b9cc !important;">
+            <div class="card shadow h-100 py-2 border-0 border-start border-warning border-5">
                 <div class="card-body">
                     <div class="row no-gutters align-items-center">
                         <div class="col mr-2">
-                            <div class="text-xs fw-bold text-info text-uppercase mb-1" style="letter-spacing: 0.05em;">
-                                Toplanan Yanıtlar
-                            </div>
-                            <div class="h3 mb-0 fw-bold text-gray-800" id="statTotalAnswers">0</div>
+                            <div class="text-xs fw-bold text-warning text-uppercase mb-1">Toplam Yanıt</div>
+                            <div class="h5 mb-0 fw-bold text-gray-800" id="statTotalAnswers">0</div>
                         </div>
-                        <div class="col-auto">
-                            <i class="fas fa-users fa-2x text-gray-300" style="opacity: 0.5;"></i>
-                        </div>
+                        <div class="col-auto"><i class="fa-solid fa-reply-all fa-2x text-gray-300 opacity-50"></i></div>
                     </div>
                 </div>
             </div>
         </div>
     </div>
 
-    <!-- Alt Bölüm: Son Anketler Tablosu -->
+    <!-- YENİ: GRAFİKLER -->
     <div class="row">
-        <div class="col-lg-12">
-            <div class="card shadow mb-4 border-0">
-                <div class="card-header py-3 bg-white d-flex flex-row align-items-center justify-content-between">
-                    <h6 class="m-0 fw-bold text-primary"><i class="fa fa-clock text-muted me-2"></i> Sistemdeki Son Anketler</h6>
+        <!-- Pasta Grafiği -->
+        <div class="col-lg-6 mb-4">
+            <div class="card shadow border-0 h-100">
+                <div class="card-header bg-white py-3">
+                    <h6 class="m-0 fw-bold text-primary"><i class="fa-solid fa-chart-pie me-1"></i> Anket Durum Dağılımı</h6>
                 </div>
-                <div class="card-body p-0">
-                    <div class="table-responsive">
-                        <table class="table table-hover align-middle mb-0">
-                            <thead class="table-light text-muted">
-                                <tr>
-                                    <th class="ps-4">Anket Adı</th>
-                                    <th>Oluşturulma</th>
-                                    <th>Bitiş Tarihi</th>
-                                    <th>Durum</th>
-                                    <th class="text-end pe-4">Kısayol</th>
-                                </tr>
-                            </thead>
-                            <tbody id="recentSurveysTable">
-                                <tr><td colspan="5" class="text-center text-muted py-4"><i class="fa fa-spinner fa-spin me-2"></i> Veriler yükleniyor...</td></tr>
-                            </tbody>
-                        </table>
-                    </div>
+                <div class="card-body">
+                    <canvas id="statusPieChart" style="max-height: 250px;"></canvas>
                 </div>
+            </div>
+        </div>
+
+        <!-- Sütun Grafiği -->
+        <div class="col-lg-6 mb-4">
+            <div class="card shadow border-0 h-100">
+                <div class="card-header bg-white py-3">
+                    <h6 class="m-0 fw-bold text-primary"><i class="fa-solid fa-chart-column me-1"></i> Sistem Genel Bakış</h6>
+                </div>
+                <div class="card-body">
+                    <canvas id="summaryBarChart" style="max-height: 250px;"></canvas>
+                </div>
+            </div>
+        </div>
+    </div>
+
+    <!-- TABLO (Son Eklenenler) -->
+    <div class="card shadow border-0 mb-4">
+        <div class="card-header bg-white py-3">
+            <h6 class="m-0 fw-bold text-primary"><i class="fa-solid fa-clock-rotate-left me-1"></i> Son Eklenen Anketler</h6>
+        </div>
+        <div class="card-body p-0">
+            <div class="table-responsive">
+                <table class="table table-hover align-middle mb-0">
+                    <thead class="table-light text-muted">
+                        <tr>
+                            <th class="ps-4">Anket Başlığı</th>
+                            <th>Oluşturulma</th>
+                            <th>Bitiş Tarihi</th>
+                            <th>Durum</th>
+                            <th class="text-end pe-4">İşlem</th>
+                        </tr>
+                    </thead>
+                    <tbody id="recentSurveysTable">
+                        <tr><td colspan="5" class="text-center text-muted py-5"><i class="fas fa-spinner fa-spin fa-2x mb-3 text-primary"></i><br>Yükleniyor...</td></tr>
+                    </tbody>
+                </table>
             </div>
         </div>
     </div>
 </div>
 
 @section Scripts {
+    <!-- YENİ: Chart.js Kütüphanesi -->
+    <script src="https://cdn.jsdelivr.net/npm/chart.js"></script>
+
     <script>
         $(document).ready(function () {
-            // Animasyon Fonksiyonu: Sayıları 0'dan hedefe doğru saydırır
+            // Sayıları animasyonla arttırma fonksiyonu
             function animateValue(id, start, end, duration) {
                 var obj = document.getElementById(id);
                 if (!obj) return;
-
-                if (start === end || end === 0) {
-                    obj.innerHTML = end;
-                    return;
-                }
-
+                if (start === end || end === 0) { obj.innerHTML = end; return; }
                 var range = end - start;
                 var current = start;
                 var increment = end > start ? 1 : -1;
                 var stepTime = Math.abs(Math.floor(duration / range));
                 if(stepTime < 5) stepTime = 5;
-
                 var timer = setInterval(function() {
                     current += increment;
                     obj.innerHTML = current;
-                    if (current == end) {
-                        clearInterval(timer);
-                    }
+                    if (current == end) clearInterval(timer);
                 }, stepTime);
             }
 
@@ -152,7 +151,7 @@
                 var token = localStorage.getItem("token");
                 if (!token) return;
 
-                // 1. İSTATİSTİKLERİ YENİ YAZDIĞIMIZ API'DEN GERÇEK ZAMANLI ÇEK
+                // 1. İSTATİSTİKLER VE GRAFİKLERİ YÜKLE
                 $.ajax({
                     url: "https://localhost:7094/api/Survey/GetDashboardStats",
                     type: "GET",
@@ -161,19 +160,50 @@
                         if (res.status && res.data) {
                             var stats = res.data;
 
-                            // Backend'den gelen gerçek verileri animasyonla yazdırıyoruz!
+                            // Kutuları doldur
                             animateValue("statTotalSurveys", 0, stats.totalSurveys, 1000);
                             animateValue("statActiveSurveys", 0, stats.activeSurveys, 1000);
                             animateValue("statTotalQuestions", 0, stats.totalQuestions, 1200);
                             animateValue("statTotalAnswers", 0, stats.totalAnswers, 1500);
+
+                            // PASTA GRAFİĞİ (Aktif / Pasif Dağılımı)
+                            var passiveCount = stats.totalSurveys - stats.activeSurveys;
+                            new Chart(document.getElementById('statusPieChart').getContext('2d'), {
+                                type: 'doughnut',
+                                data: {
+                                    labels: ['Aktif Anketler', 'Pasif Anketler'],
+                                    datasets: [{
+                                        data: [stats.activeSurveys, passiveCount],
+                                        backgroundColor: ['#198754', '#dc3545'], // Bootstrap yeşil ve kırmızı
+                                        borderWidth: 2
+                                    }]
+                                },
+                                options: { maintainAspectRatio: false, cutout: '65%' }
+                            });
+
+                            // SÜTUN GRAFİĞİ (Genel Bakış)
+                            new Chart(document.getElementById('summaryBarChart').getContext('2d'), {
+                                type: 'bar',
+                                data: {
+                                    labels: ['Anketler', 'Sorular', 'Yanıtlar'],
+                                    datasets: [{
+                                        label: 'Adet',
+                                        data: [stats.totalSurveys, stats.totalQuestions, stats.totalAnswers],
+                                        backgroundColor: ['#0d6efd', '#0dcaf0', '#ffc107'], // Mavi, Açık Mavi, Sarı
+                                        borderRadius: 4
+                                    }]
+                                },
+                                options: {
+                                    maintainAspectRatio: false,
+                                    scales: { y: { beginAtZero: true, ticks: { precision: 0 } } },
+                                    plugins: { legend: { display: false } }
+                                }
+                            });
                         }
-                    },
-                    error: function () {
-                        console.error("İstatistikler çekilemedi.");
                     }
                 });
 
-                // 2. ALT TABLO İÇİN ANKETLERİ ÇEK VE DOLDUR
+                // 2. ALT TABLOYU DOLDUR (Son Eklenenler)
                 $.ajax({
                     url: "https://localhost:7094/api/Survey",
                     type: "GET",
@@ -181,43 +211,43 @@
                     success: function (res) {
                         var surveys = res || [];
                         var html = "";
-
-                        // En yeni eklenen 5 anketi filtrele
                         var recentSurveys = surveys.sort((a,b) => b.id - a.id).slice(0, 5);
 
                         if (recentSurveys.length > 0) {
                             recentSurveys.forEach(function (s) {
                                 var date = new Date(s.createdDate).toLocaleDateString("tr-TR");
                                 var endDate = s.endDate ? new Date(s.endDate).toLocaleDateString("tr-TR") : '<span class="text-muted">Süresiz</span>';
-
                                 var statusBadge = s.isActive
                                     ? '<span class="badge bg-success bg-opacity-75 text-white px-3 py-2 rounded-pill"><i class="fa fa-play me-1"></i> Aktif</span>'
                                     : '<span class="badge bg-danger bg-opacity-75 text-white px-3 py-2 rounded-pill"><i class="fa fa-pause me-1"></i> Pasif</span>';
 
-                                html += `
-                                    <tr>
-                                        <td class="ps-4 fw-bold text-dark">${s.title}</td>
-                                        <td>${date}</td>
-                                        <td>${endDate}</td>
-                                        <td>${statusBadge}</td>
-                                        <td class="text-end pe-4">
-                                            <a href="/Survey/Detail/${s.id}" class="btn btn-sm btn-light border shadow-sm text-primary">
-                                                <i class="fa fa-pen"></i> Yönet
-                                            </a>
-                                        </td>
-                                    </tr>`;
+        html += `
+            <tr>
+                <td class="ps-4 fw-bold text-dark">${s.title}</td>
+                <td>${date}</td>
+                <td>${endDate}</td>
+                <td>${statusBadge}</td>
+                <td class="text-end pe-4">
+                    <!-- YENİ EKLENEN SONUÇLAR BUTONU -->
+                    <a href="/Survey/Results/${s.id}" class="btn btn-sm btn-warning shadow-sm text-dark me-1">
+                        <i class="fa-solid fa-chart-pie"></i> Sonuçlar
+                    </a>
+
+                    <a href="/Survey/Detail/${s.id}" class="btn btn-sm btn-light border shadow-sm text-primary">
+                        <i class="fa fa-pen"></i> Yönet
+                    </a>
+                </td>
+            </tr>`;
                             });
                         } else {
                             html = '<tr><td colspan="5" class="text-center text-muted py-5"><i class="fa fa-box-open fa-2x mb-3 d-block opacity-50"></i> Sistemde henüz anket bulunmuyor.</td></tr>';
                         }
-
                         $("#recentSurveysTable").html(html);
                     }
                 });
             }
 
-            // Sayfa yüklendiğinde dataları çek
-            loadDashboardData();
+            loadDashboardData(); // Fonksiyonu tetikle
         });
     </script>
 }

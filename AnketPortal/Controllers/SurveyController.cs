@@ -1,7 +1,7 @@
 ﻿using AnketPortal.API.DTOs;
 using AnketPortal.API.Models;
 using AnketPortal.API.Repositories;
-using AnketPortal.API.Data; // AppDbContext için eklendi
+using AnketPortal.API.Data;
 using Microsoft.AspNetCore.Authorization;
 using Microsoft.AspNetCore.Mvc;
 using System.Security.Claims;
@@ -33,7 +33,7 @@ namespace AnketPortal.API.Controllers
             _context = context; // Ataması yapıldı
         }
 
-        // Aktif Anketleri Listeleme ve Arama (GÜNCELLENDİ: Yönetici her şeyi görebilir ve eksik veriler eklendi)
+        // Aktif Anketleri Listeleme ve Arama 
         [HttpGet]
         public async Task<IActionResult> GetSurveys(string? search = null)
         {
@@ -73,7 +73,7 @@ namespace AnketPortal.API.Controllers
             return Ok(survey);
         }
 
-        // Yeni Anket Oluşturma (GÜNCELLENDİ: IsActive ve IsPublic eklendi)
+        // Yeni Anket Oluşturma
         [Authorize(Roles = "Admin,SuperAdmin")]
         [HttpPost]
         public async Task<IActionResult> CreateSurvey(SurveyCreateDto model)
@@ -97,7 +97,7 @@ namespace AnketPortal.API.Controllers
             return Ok(new ResultDto { Status = true, Message = "Anket başarıyla oluşturuldu." });
         }
 
-        // Anket Güncelleme (GÜNCELLENDİ: EndDate ve IsPublic eklendi)
+        // Anket Güncelleme 
         [Authorize(Roles = "Admin,SuperAdmin")]
         [HttpPut]
         public async Task<IActionResult> UpdateSurvey(SurveyDto model)
@@ -116,7 +116,7 @@ namespace AnketPortal.API.Controllers
             return Ok(new ResultDto { Status = true, Message = "Anket başarıyla güncellendi." });
         }
 
-        // --- YENİ: Anlık Durum Değiştirme (Switch Butonu İçin) ---
+        // Anlık Durum Değiştirme (Switch Butonu İçin) 
         [Authorize(Roles = "Admin,SuperAdmin")]
         [HttpPut("ToggleActive/{id}")]
         public async Task<IActionResult> ToggleActiveStatus(int id)
@@ -124,7 +124,6 @@ namespace AnketPortal.API.Controllers
             var survey = await _surveyRepo.GetByIdAsync(id);
             if (survey == null) return NotFound(new ResultDto { Status = false, Message = "Anket bulunamadı." });
 
-            // Durumu tersine çevir (True ise False, False ise True yap)
             survey.IsActive = !survey.IsActive;
 
             _surveyRepo.Update(survey);
@@ -133,7 +132,7 @@ namespace AnketPortal.API.Controllers
             return Ok(new ResultDto { Status = true, Message = survey.IsActive ? "Anket Aktif edildi." : "Anket Pasife alındı." });
         }
 
-        // Ankete Soru Ekleme (ORİJİNAL HALİYLE DURUYOR)
+        // Ankete Soru Ekleme
         [Authorize(Roles = "Admin,SuperAdmin")]
         [HttpPost("AddQuestion")]
         public async Task<IActionResult> AddQuestion(QuestionDto model)
@@ -153,17 +152,17 @@ namespace AnketPortal.API.Controllers
             return Ok(new ResultDto { Status = true, Message = "Soru başarıyla eklendi." });
         }
 
-        // Soruya Şık Ekleme (Düzeltildi)
+        // Soruya Şık Ekleme 
         [Authorize(Roles = "Admin,SuperAdmin")]
         [HttpPost("AddOption")]
         public async Task<IActionResult> AddOption(OptionCreateDto model)
         {
             var option = new QuestionOption
             {
-                OptionText = model.OptionText, // Boşluk silindi
+                OptionText = model.OptionText,
                 Order = model.Order,
                 QuestionId = model.QuestionId,
-                ImageUrl = model.ImageUrl, // Yeni özelliğimizi buraya da ekledik
+                ImageUrl = model.ImageUrl,
                 CreatedDate = DateTime.Now
             };
 
@@ -173,15 +172,45 @@ namespace AnketPortal.API.Controllers
             return Ok(new ResultDto { Status = true, Message = "Şık başarıyla eklendi." });
         }
 
-        // Anket Sonuçları (ORİJİNAL HALİYLE DURUYOR)
+        // Anket Sonuçları (CANLANDIRILDI!)
         [Authorize(Roles = "Admin,SuperAdmin")]
         [HttpGet("{id}/Results")]
         public async Task<IActionResult> GetSurveyResults(int id)
         {
-            return Ok(new ResultDto { Status = true, Message = $"{id} numaralı anketin sonuçları derleniyor. (İstatistikler Final projesinde aktif edilecek)" });
+            var survey = await _surveyRepo.AsQueryable()
+                .Include(s => s.Questions)
+                    .ThenInclude(q => q.Options)
+                .FirstOrDefaultAsync(s => s.Id == id);
+
+            if (survey == null)
+                return NotFound(new ResultDto { Status = false, Message = "Anket bulunamadı." });
+
+            // HATANIN ÇÖZÜMÜ BURADA:
+            // a.OptionId yerine Entity Framework'ün ilişkisel tablolarda standart olarak 
+            // kullandığı a.QuestionOptionId alanını kullandım. 
+            var results = survey.Questions.Select(q => new
+            {
+                QuestionId = q.Id,
+                QuestionText = q.Text,
+                Options = q.Options.Select(o => new
+                {
+                    OptionId = o.Id,
+                    OptionText = o.OptionText,
+                    // Değiştirilen satır:
+                    AnswerCount = _context.SurveyAnswers.Count(a => a.SelectedOptionId == o.Id)
+                }).ToList()
+            }).ToList();
+
+            var data = new
+            {
+                SurveyTitle = survey.Title,
+                Results = results
+            };
+
+            return Ok(new ResultDto { Status = true, Data = data });
         }
 
-        // Anket Silme (Soft Delete) (ORİJİNAL HALİYLE DURUYOR)
+        // Anket Silme (Soft Delete)
         [Authorize(Roles = "Admin,SuperAdmin")]
         [HttpDelete("{id}")]
         public async Task<IActionResult> DeleteSurvey(int id)
@@ -196,7 +225,7 @@ namespace AnketPortal.API.Controllers
             return Ok(new ResultDto { Status = true, Message = "Anket başarıyla silindi (pasife alındı)." });
         }
 
-        // Veritabanından fiziksel olarak sil (Hard Delete) (ORİJİNAL HALİYLE DURUYOR)
+        // Veritabanından fiziksel olarak sil (Hard Delete)
         [Authorize(Roles = "SuperAdmin")]
         [HttpDelete("{id}/HardDelete")]
         public async Task<IActionResult> HardDeleteSurvey(int id)
@@ -214,16 +243,11 @@ namespace AnketPortal.API.Controllers
         [HttpGet("GetDashboardStats")]
         public async Task<IActionResult> GetDashboardStats()
         {
-            // Veritabanından gerçek ve canlı verileri sayıyoruz
             var totalSurveys = await _context.Surveys.CountAsync();
             var activeSurveys = await _context.Surveys.CountAsync(s => s.IsActive);
             var totalQuestions = await _context.Questions.CountAsync();
-
-            // Not: AppDbContext içinde SurveyAnswers DbSet'in tanımlı olduğunu varsayıyoruz. 
-            // Eğer DbSet adın farklıysa (örneğin Answers ise) orayı _context.Answers olarak değiştir.
             var totalAnswers = await _context.SurveyAnswers.CountAsync();
 
-            // Verileri isimsiz (anonymous) bir objede paketleyip UI'a gönderiyoruz
             var stats = new
             {
                 TotalSurveys = totalSurveys,

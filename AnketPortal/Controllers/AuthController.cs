@@ -5,6 +5,7 @@ using Microsoft.AspNetCore.Authorization;
 using Microsoft.AspNetCore.Identity;
 using Microsoft.AspNetCore.Mvc;
 using Microsoft.EntityFrameworkCore;
+using System.Security.Claims;
 
 namespace AnketPortal.API.Controllers
 {
@@ -164,6 +165,79 @@ namespace AnketPortal.API.Controllers
             await _userManager.UpdateAsync(user);
 
             return Ok(new ResultDto { Status = true, Message = "Yenilendi", Data = tokenResponse });
+        }
+        // --- PROFIL İÇİN DTO'LAR ---
+        public class UserProfileDto
+        {
+            public string UserName { get; set; }
+            public string FullName { get; set; }
+            public string Email { get; set; }
+            public string PhoneNumber { get; set; }
+            public string ProfilePhoto { get; set; }
+            public string Role { get; set; }
+        }
+
+        public class UpdateProfileDto
+        {
+            public string FullName { get; set; }
+            public string Email { get; set; }
+            public string PhoneNumber { get; set; }
+            public string ProfilePhoto { get; set; }
+        }
+
+        // --- YENİ: KULLANICI PROFİLİNİ GETİR ---
+        [Authorize]
+        [HttpGet("GetProfile")]
+        public async Task<IActionResult> GetProfile()
+        {
+            // Token'dan giriş yapan kişinin ID'sini alıyoruz
+            var userId = User.FindFirstValue(ClaimTypes.NameIdentifier);
+            var user = await _userManager.FindByIdAsync(userId);
+
+            if (user == null) return NotFound(new ResultDto { Status = false, Message = "Kullanıcı bulunamadı" });
+
+            var roles = await _userManager.GetRolesAsync(user);
+
+            var profile = new UserProfileDto
+            {
+                UserName = user.UserName,
+                FullName = user.FullName,
+                Email = user.Email,
+                PhoneNumber = user.PhoneNumber,
+                ProfilePhoto = user.ProfilePhoto,
+                Role = roles.FirstOrDefault() ?? "User"
+            };
+
+            return Ok(new ResultDto { Status = true, Data = profile });
+        }
+
+        // --- YENİ: KULLANICI PROFİLİNİ GÜNCELLE ---
+        [Authorize]
+        [HttpPut("UpdateProfile")]
+        public async Task<IActionResult> UpdateProfile([FromBody] UpdateProfileDto model)
+        {
+            var userId = User.FindFirstValue(ClaimTypes.NameIdentifier);
+            var user = await _userManager.FindByIdAsync(userId);
+
+            if (user == null) return NotFound(new ResultDto { Status = false, Message = "Kullanıcı bulunamadı" });
+
+            user.FullName = model.FullName;
+            user.Email = model.Email;
+            user.PhoneNumber = model.PhoneNumber;
+
+            // Eğer yeni bir fotoğraf seçilmişse/gönderilmişse güncelle
+            if (!string.IsNullOrEmpty(model.ProfilePhoto))
+            {
+                user.ProfilePhoto = model.ProfilePhoto;
+            }
+
+            var result = await _userManager.UpdateAsync(user);
+            if (result.Succeeded)
+            {
+                return Ok(new ResultDto { Status = true, Message = "Profil başarıyla güncellendi!" });
+            }
+
+            return BadRequest(new ResultDto { Status = false, Message = "Profil güncellenirken bir hata oluştu." });
         }
     }
 }

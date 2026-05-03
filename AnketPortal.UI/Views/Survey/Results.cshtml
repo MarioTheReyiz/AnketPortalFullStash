@@ -1,0 +1,155 @@
+﻿@{
+    ViewData["Title"] = "Anket Sonuçları";
+}
+
+<div class="container-fluid mt-4">
+    <div class="d-sm-flex align-items-center justify-content-between mb-4">
+        <h1 class="h3 mb-0 text-gray-800 fw-bold">
+            <i class="fa-solid fa-chart-pie text-primary me-2"></i>
+            <span id="lblSurveyTitle">Anket Sonuçları Yükleniyor...</span>
+        </h1>
+        <a href="/Survey/Index" class="btn btn-sm btn-secondary shadow-sm">
+            <i class="fa-solid fa-arrow-left fa-sm text-white-50"></i> Anketlere Dön
+        </a>
+    </div>
+
+    <!-- GRAFİKLERİN GELECEĞİ DİNAMİK ALAN -->
+    <div class="row" id="chartsContainer">
+        <div class="col-12 text-center py-5" id="loadingDiv">
+            <i class="fas fa-spinner fa-spin fa-3x text-primary mb-3"></i>
+            <h5 class="text-muted">Veriler analiz ediliyor...</h5>
+        </div>
+    </div>
+</div>
+
+<div class="d-sm-flex align-items-center justify-content-between mb-4">
+    <h1 class="h3 mb-0 text-gray-800 fw-bold">
+        <i class="fa-solid fa-chart-pie text-primary me-2"></i>
+        <span id="lblSurveyTitle">Anket Sonuçları Yükleniyor...</span>
+    </h1>
+    <div>
+        <!-- YENİ EKLENEN EXCEL İNDİR BUTONU -->
+        <button id="btnExportExcel" class="btn btn-sm btn-success shadow-sm me-2 d-none">
+            <i class="fa-solid fa-file-excel me-1"></i> Sonuçları İndir (CSV)
+        </button>
+        <a href="/Survey/Index" class="btn btn-sm btn-secondary shadow-sm">
+            <i class="fa-solid fa-arrow-left fa-sm text-white-50"></i> Anketlere Dön
+        </a>
+    </div>
+</div>
+
+@section Scripts {
+    <!-- Chart.js Kütüphanesi -->
+    <script src="https://cdn.jsdelivr.net/npm/chart.js"></script>
+
+    <script>
+        function getToken() { return localStorage.getItem("token"); }
+
+        $(document).ready(function () {
+            // Controller'dan ViewBag ile gelen Anket ID'sini alıyoruz
+            var surveyId = "@ViewBag.SurveyId";
+
+            $.ajax({
+                url: "https://localhost:7094/api/Survey/" + surveyId + "/Results",
+                type: "GET",
+                headers: { "Authorization": "Bearer " + getToken() },
+                success: function (res) {
+                    if (res.status && res.data) {
+                        $("#lblSurveyTitle").text(res.data.surveyTitle + " - Raporu");
+                        $("#loadingDiv").remove(); // Yükleniyor yazısını sil
+
+                        var questions = res.data.results;
+                        var container = $("#chartsContainer");
+
+                        if (questions.length === 0) {
+                            container.html('<div class="col-12 text-center py-4"><p class="text-muted">Bu ankette henüz soru yok.</p></div>');
+                            return;
+                        }
+
+                        // Her Soru İçin Döngü
+                        questions.forEach(function (q, index) {
+                            // Soru için HTML Kutu (Card) oluştur
+                            var canvasId = "chart_" + q.questionId;
+                            var colHtml =
+                                '<div class="col-lg-6 mb-4">' +
+                                    '<div class="card shadow border-0 h-100">' +
+                                        '<div class="card-header bg-white py-3">' +
+                                            '<h6 class="m-0 fw-bold text-primary">Soru ' + (index + 1) + ': ' + q.questionText + '</h6>' +
+                                        '</div>' +
+                                        '<div class="card-body">' +
+                                            '<div style="height: 250px;">' +
+                                                '<canvas id="' + canvasId + '"></canvas>' +
+                                            '</div>' +
+                                        '</div>' +
+                                    '</div>' +
+                                '</div>';
+
+                            container.append(colHtml);
+
+                            // O soruya ait şıkları ve oy sayılarını (AnswerCount) ayır
+                            var labels = [];
+                            var dataPoints = [];
+                            var backgroundColors = ['#4e73df', '#1cc88a', '#36b9cc', '#f6c23e', '#e74a3b', '#858796'];
+
+                            q.options.forEach(function (opt) {
+                                labels.push(opt.optionText);
+                                dataPoints.push(opt.answerCount);
+                            });
+
+                            // Grafik oluştur (Eğer 3 veya daha az şık varsa Pasta(Pie), çoksa Sütun(Bar) grafik yapalım hoş dursun)
+                            var chartType = labels.length <= 3 ? 'doughnut' : 'bar';
+
+                            new Chart(document.getElementById(canvasId).getContext('2d'), {
+                                type: chartType,
+                                data: {
+                                    labels: labels,
+                                    datasets: [{
+                                        label: 'Oy Sayısı',
+                                        data: dataPoints,
+                                        backgroundColor: backgroundColors,
+                                        borderWidth: 1
+                                    }]
+                                },
+                                options: {
+                                    maintainAspectRatio: false,
+                                    plugins: { legend: { display: chartType === 'doughnut' } },
+                                    scales: chartType === 'bar' ? { y: { beginAtZero: true, ticks: { precision: 0 } } } : {}
+                                }
+                            });
+                        });
+                                // Grafikler çizildikten sonra İndir butonunu görünür yap
+        $("#btnExportExcel").removeClass("d-none");
+
+        // CSV İndirme İşlemi
+        $("#btnExportExcel").click(function () {
+            var csvContent = "data:text/csv;charset=utf-8,\uFEFF"; // Türkçe karakter (UTF-8 BOM) desteği
+            csvContent += "Soru, Şık, Oy Sayısı\n"; // Başlıklar
+
+            questions.forEach(function (q) {
+                q.options.forEach(function (opt) {
+                    // Excel'de virgüller sütun ayırıcıdır. Metinlerin içinde virgül varsa tırnak içine alıyoruz.
+                    var questionText = '"' + q.questionText.replace(/"/g, '""') + '"';
+                    var optionText = '"' + opt.optionText.replace(/"/g, '""') + '"';
+                    csvContent += questionText + "," + optionText + "," + opt.answerCount + "\n";
+                });
+            });
+
+            // İndirme işlemini tetikle
+            var encodedUri = encodeURI(csvContent);
+            var link = document.createElement("a");
+            link.setAttribute("href", encodedUri);
+            link.setAttribute("download", "AnketSonuclari_" + surveyId + ".csv");
+            document.body.appendChild(link); // Gerekli (Firefox vb. için)
+            link.click();
+            document.body.removeChild(link);
+        });
+                    }
+                },
+                error: function () {
+                    $("#loadingDiv").html('<h5 class="text-danger"><i class="fa fa-triangle-exclamation"></i> Sonuçlar yüklenirken bir hata oluştu!</h5>');
+                }
+            });
+        });
+    </script>
+
+}

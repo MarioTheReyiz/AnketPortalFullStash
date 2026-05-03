@@ -9,7 +9,9 @@ namespace AnketPortal.API.Models
         public bool IsActive { get; set; } = true;
 
         public string? RefreshToken { get; set; }
-        public DateTime? RefreshTokenEndDate { get; set; }  
+        public DateTime? RefreshTokenEndDate { get; set; }
+
+        public string? ProfilePhoto { get; set; }
 
         public ICollection<Survey> CreatedSurveys { get; set; } = new List<Survey>();
 

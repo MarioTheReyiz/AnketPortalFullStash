@@ -1,38 +1,95 @@
 ﻿@{
-    ViewData["Title"] = "Profilim";
+    ViewData["Title"] = "Profil Ayarları";
 }
 
 <div class="container-fluid mt-4">
-    <div class="row justify-content-center">
-        <div class="col-lg-6 col-md-8">
-            <div class="card shadow border-0 rounded-4 mt-5">
-                <div class="card-body p-5 text-center relative">
+    <div class="d-sm-flex align-items-center justify-content-between mb-4">
+        <h1 class="h3 mb-0 text-gray-800 fw-bold"><i class="fa-solid fa-user-gear text-primary me-2"></i> Profilim</h1>
+    </div>
 
-                    <!-- Profil Fotoğrafı (Dinamik) -->
-                    <img id="profileAvatar" src="https://ui-avatars.com/api/?name=U&background=4e73df&color=fff&size=128"
-                         class="rounded-circle shadow border border-4 border-white mb-4"
-                         style="width: 120px; height: 120px; margin-top: -80px; background: white;">
-
-                    <h3 class="fw-bold text-dark mb-1" id="profileName">Yükleniyor...</h3>
-                    <p class="text-muted mb-4" id="profileEmail"><i class="fa-solid fa-envelope me-1"></i> Yükleniyor...</p>
-
-                    <div id="profileRoleBadge" class="mb-4">
-                        <!-- Yetki rozeti buraya gelecek -->
+    <div class="row">
+        <!-- SOL TARAF: FOTOĞRAF VE ÖZET -->
+        <div class="col-xl-4 col-lg-5 mb-4">
+            <div class="card shadow border-0 h-100 text-center">
+                <div class="card-body p-4 pt-5">
+                    
+                    <!-- Fotoğraf Alanı -->
+                    <div class="position-relative d-inline-block mb-4">
+                        <img id="profileAvatarDisplay" src="https://ui-avatars.com/api/?name=U&background=4e73df&color=fff&size=150" 
+                             class="rounded-circle shadow-sm border border-4 border-white object-fit-cover" 
+                             style="width: 150px; height: 150px;">
+                        
+                        <!-- Fotoğraf Değiştir Butonu -->
+                        <button class="btn btn-primary btn-sm rounded-circle position-absolute bottom-0 end-0 shadow" 
+                                style="width: 35px; height: 35px;" id="btnTriggerPhotoUpload" title="Fotoğrafı Değiştir">
+                            <i class="fa-solid fa-camera"></i>
+                        </button>
+                        <!-- Gizli Dosya Seçici -->
+                        <input type="file" id="filePhoto" class="d-none" accept="image/*">
                     </div>
-
-                    <hr class="mb-4">
-
-                    <div class="row text-start">
-                        <div class="col-sm-6 mb-3">
-                            <label class="text-muted small fw-bold text-uppercase">Ad Soyad</label>
-                            <p class="text-dark fw-semibold mb-0" id="detailName">-</p>
-                        </div>
-                        <div class="col-sm-6 mb-3">
-                            <label class="text-muted small fw-bold text-uppercase">E-Posta Adresi</label>
-                            <p class="text-dark fw-semibold mb-0" id="detailEmail">-</p>
-                        </div>
+                    
+                    <h4 class="fw-bold text-dark mb-1" id="lblFullName">Yükleniyor...</h4>
+                    <p class="text-muted mb-3" id="lblUserName">Yükleniyor...</p> 
+                    
+                    <div id="lblRoleBadge">
+                        <span class="badge bg-secondary">Yükleniyor...</span>
                     </div>
+                </div>
+            </div>
+        </div>
 
+        <!-- SAĞ TARAF: BİLGİ GÜNCELLEME FORMU -->
+        <div class="col-xl-8 col-lg-7 mb-4">
+            <div class="card shadow border-0 h-100">
+                <div class="card-header bg-white py-3">
+                    <h6 class="m-0 fw-bold text-primary">Kişisel Bilgiler</h6>
+                </div>
+                <div class="card-body p-4">
+                    <form id="frmProfile" onsubmit="return false;">
+                        <!-- JS tarafında oluşturduğumuz Base64 fotoğrafı burada saklayacağız -->
+                        <input type="hidden" id="hdnBase64Photo" value="">
+
+                        <div class="row mb-3">
+                            <div class="col-md-6">
+                                <label class="form-label fw-bold small text-muted">Kullanıcı Adı (Değiştirilemez)</label>
+                                <div class="input-group">
+                                    <span class="input-group-text"><i class="fa-solid fa-at"></i></span>
+                                    <input type="text" class="form-control" id="txtUsername" disabled>
+                                </div>
+                            </div>
+                            <div class="col-md-6">
+                                <label class="form-label fw-bold small text-muted">Ad Soyad</label>
+                                <div class="input-group">
+                                    <span class="input-group-text"><i class="fa-solid fa-user"></i></span>
+                                    <input type="text" class="form-control" id="txtFullName" required>
+                                </div>
+                            </div>
+                        </div>
+
+                        <div class="row mb-4">
+                            <div class="col-md-6">
+                                <label class="form-label fw-bold small text-muted">E-Posta Adresi</label>
+                                <div class="input-group">
+                                    <span class="input-group-text"><i class="fa-solid fa-envelope"></i></span>
+                                    <input type="email" class="form-control" id="txtEmail" required>
+                                </div>
+                            </div>
+                            <div class="col-md-6">
+                                <label class="form-label fw-bold small text-muted">Telefon Numarası</label>
+                                <div class="input-group">
+                                    <span class="input-group-text"><i class="fa-solid fa-phone"></i></span>
+                                    <input type="text" class="form-control" id="txtPhone" placeholder="0555 555 55 55">
+                                </div>
+                            </div>
+                        </div>
+
+                        <hr>
+                        <div class="text-end mt-3">
+                            <button class="btn btn-primary px-4 shadow-sm" id="btnSaveProfile">
+                                <i class="fa-solid fa-floppy-disk me-2"></i> Bilgilerimi Kaydet
+                            </button>
+                        </div>
+                    </form>
                 </div>
             </div>
         </div>
@@ -41,50 +98,118 @@
 
 @section Scripts {
     <script>
-        // JWT'yi okuma fonksiyonu
-        function parseJwt(token) {
-            try {
-                var base64Url = token.split('.')[1];
-                var base64 = base64Url.replace(/-/g, '+').replace(/_/g, '/');
-                var jsonPayload = decodeURIComponent(window.atob(base64).split('').map(function(c) {
-                    return '%' + ('00' + c.charCodeAt(0).toString(16)).slice(-2);
-                }).join(''));
-                return JSON.parse(jsonPayload);
-            } catch (e) {
-                return null;
-            }
-        }
+        function getToken() { return localStorage.getItem("token"); }
 
         $(document).ready(function () {
-            var token = localStorage.getItem("token");
-            if(token) {
-                var decoded = parseJwt(token);
-                if(decoded) {
-                    // Token içindeki verileri yakala
-                    var fullName = decoded.FullName || decoded["FullName"] || "Kullanıcı";
-                    var email = decoded["http://schemas.xmlsoap.org/ws/2005/05/identity/claims/emailaddress"] || decoded.email || "E-Posta Bulunamadı";
-                    var role = decoded["http://schemas.microsoft.com/ws/2008/06/identity/claims/role"] || decoded.role || "User";
+            
+            // 1. SAYFA AÇILINCA API'DEN VERİLERİ ÇEK
+            $.ajax({
+                url: "https://localhost:7094/api/Auth/GetProfile",
+                type: "GET",
+                headers: { "Authorization": "Bearer " + getToken() },
+                success: function (res) {
+                    if (res.status) {
+                        var user = res.data;
 
-                    // Ekrana bas
-                    $("#profileName").text(fullName);
-                    $("#detailName").text(fullName);
-                    $("#profileEmail").html('<i class="fa-solid fa-envelope me-1"></i> ' + email);
-                    $("#detailEmail").text(email);
+                        // Sol Taraf (Görsel ve Özet)
+                        $("#lblFullName").text(user.fullName);
+                        
+                        $("#lblUserName").text(String.fromCharCode(64) + user.userName);
 
-                    // Baş harfe göre Avatar
-                    var firstLetter = fullName.charAt(0).toUpperCase();
-                    $("#profileAvatar").attr("src", "https://ui-avatars.com/api/?name=" + firstLetter + "&background=4e73df&color=fff&bold=true&size=128");
+                        if(user.role === "SuperAdmin") 
+                            $("#lblRoleBadge").html('<span class="badge bg-dark"><i class="fa fa-crown text-warning me-1"></i> SuperAdmin</span>');
+                        else if(user.role === "Admin") 
+                            $("#lblRoleBadge").html('<span class="badge bg-danger"><i class="fa fa-shield-halved me-1"></i> Admin</span>');
+                        else 
+                            $("#lblRoleBadge").html('<span class="badge bg-secondary"><i class="fa fa-user me-1"></i> Standart Kullanıcı</span>');
 
-                    // Rol Rozeti (Badge)
-                    if(role === "SuperAdmin") {
-                        $("#profileRoleBadge").html('<span class="badge bg-dark px-4 py-2 fs-6 rounded-pill"><i class="fa fa-crown text-warning me-1"></i> SuperAdmin</span>');
-                    } else if(role === "Admin") {
-                        $("#profileRoleBadge").html('<span class="badge bg-danger px-4 py-2 fs-6 rounded-pill"><i class="fa fa-shield-halved me-1"></i> Admin</span>');
-                    } else {
-                        $("#profileRoleBadge").html('<span class="badge bg-secondary px-4 py-2 fs-6 rounded-pill"><i class="fa fa-user me-1"></i> Standart Kullanıcı</span>');
+                        // Profil Fotoğrafı Kontrolü (DB'de varsa onu bas, yoksa isminin baş harfini)
+                        if (user.profilePhoto && user.profilePhoto.length > 50) {
+                            $("#profileAvatarDisplay").attr("src", user.profilePhoto);
+                        } else {
+                            var firstLetter = user.fullName.charAt(0).toUpperCase();
+                            $("#profileAvatarDisplay").attr("src", "https://ui-avatars.com/api/?name=" + firstLetter + "&background=4e73df&color=fff&bold=true&size=150");
+                        }
+
+                        // Sağ Taraf (Form)
+                        $("#txtUsername").val(user.userName);
+                        $("#txtFullName").val(user.fullName);
+                        $("#txtEmail").val(user.email);
+                        $("#txtPhone").val(user.phoneNumber);
                     }
                 }
-            }
+            });
+
+            // 2. FOTOĞRAF SEÇİCİYE TIKLAMA OLAYI
+            $("#btnTriggerPhotoUpload").click(function () {
+                $("#filePhoto").click();
+            });
+
+            // 3. FOTOĞRAF SEÇİLİNCE BASE64'E ÇEVİR (EKRANDA GÖSTER)
+            $("#filePhoto").change(function () {
+                var file = this.files[0];
+                if (file) {
+                    // Sadece resim dosyası mı kontrol et
+                    if (!file.type.startsWith("image/")) {
+                        Swal.fire('Hata', 'Lütfen sadece geçerli bir resim (PNG, JPG) seçin.', 'error');
+                        return;
+                    }
+
+                    var reader = new FileReader();
+                    reader.onload = function (e) {
+                        var base64String = e.target.result;
+                        $("#profileAvatarDisplay").attr("src", base64String); // Ekranda anında değişsin
+                        $("#hdnBase64Photo").val(base64String); // Arka planda API'ye gidecek değere yaz
+                    };
+                    reader.readAsDataURL(file); // Dosyayı metne çevirme işlemi başlar
+                }
+            });
+
+            // 4. BİLGİLERİ KAYDET
+            $("#btnSaveProfile").click(function () {
+                
+                // HTML5 validasyonunu kontrol et (Gerekli alanlar boş mu?)
+                if (!$("#frmProfile")[0].checkValidity()) {
+                    $("#frmProfile")[0].reportValidity();
+                    return;
+                }
+
+                var btn = $(this);
+                btn.prop("disabled", true).html('<i class="fa-solid fa-spinner fa-spin me-2"></i> Kaydediliyor...');
+
+                var payload = {
+                    FullName: $("#txtFullName").val().trim(),
+                    Email: $("#txtEmail").val().trim(),
+                    PhoneNumber: $("#txtPhone").val().trim(),
+                    ProfilePhoto: $("#hdnBase64Photo").val() // Değişmediyse boş gider, backend eskisini tutar
+                };
+
+                $.ajax({
+                    url: "https://localhost:7094/api/Auth/UpdateProfile",
+                    type: "PUT",
+                    contentType: "application/json",
+                    headers: { "Authorization": "Bearer " + getToken() },
+                    data: JSON.stringify(payload),
+                    success: function (res) {
+                        if (res.status) {
+                            Swal.fire({
+                                icon: 'success',
+                                title: 'Harika!',
+                                text: res.message,
+                                timer: 2000,
+                                showConfirmButton: false
+                            }).then(() => {
+                                // Ekranı yenile ki güncel profil resmi Layout'un sağ üstüne falan da yansısın
+                                window.location.reload(); 
+                            });
+                        }
+                    },
+                    error: function (xhr) {
+                        Swal.fire('Hata', 'Bilgileriniz güncellenirken bir sorun oluştu.', 'error');
+                        btn.prop("disabled", false).html('<i class="fa-solid fa-floppy-disk me-2"></i> Bilgilerimi Kaydet');
+                    }
+                });
+            });
         });
     </script>
 }

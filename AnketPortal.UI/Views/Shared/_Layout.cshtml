@@ -10,7 +10,6 @@
     <!-- FontAwesome -->
     <link rel="stylesheet" href="https://cdnjs.cloudflare.com/ajax/libs/font-awesome/6.4.2/css/all.min.css">
 
-    <!-- Özel İskelet CSS -->
     <style>
         body {
             background-color: #f8f9fc;
@@ -24,7 +23,6 @@
             height: 100vh;
         }
 
-        /* Sol Menü (Sidebar) */
         .sidebar {
             width: 250px;
             background: #4e73df;
@@ -58,7 +56,6 @@
                     border-left: 4px solid #fff;
                 }
 
-        /* Sağ İçerik Alanı */
         .main-content {
             flex-grow: 1;
             display: flex;
@@ -66,7 +63,6 @@
             overflow-y: auto;
         }
 
-        /* Üst Bar (Topbar) */
         .topbar {
             background: #fff;
             height: 70px;
@@ -83,67 +79,57 @@
             flex-grow: 1;
         }
     </style>
+
+    <!-- YENİ: Alt sayfalardan gelen özel CSS'leri (Örn: Bayraklı telefon) buraya basacak -->
+    @await RenderSectionAsync("Styles", required: false)
 </head>
 <body>
 
     <div class="wrapper">
-        <!-- SOL MENÜ -->
         <nav class="sidebar">
-            <div class="brand">
-                <i class="fa-solid fa-square-poll-vertical"></i> ANKET API
-            </div>
+            <div class="brand"><i class="fa-solid fa-square-poll-vertical"></i> ANKET API</div>
             <a href="/Home/Index" id="navHome"><i class="fa-solid fa-house me-2"></i> Ana Sayfa</a>
             <a href="/Survey/Index" id="navSurveys"><i class="fa-solid fa-list-check me-2"></i> Tüm Anketler</a>
 
-            <!-- Yöneticiye Özel Menü (Sadece Admin ve SuperAdmin görecek) -->
             <div id="adminMenu" style="display:none;">
                 <div class="px-3 pt-3 pb-1 text-uppercase text-white-50" style="font-size: 0.75rem;">Yönetici Alanı</div>
                 <a href="/Survey/Manage"><i class="fa-solid fa-gear me-2"></i> Anket Yönetimi</a>
             </div>
 
-            <!-- SÜPER ADMİNE ÖZEL MENÜ -->
             <div id="superAdminMenu" style="display:none;">
                 <a href="/Home/Users"><i class="fa-solid fa-users-gear me-2"></i> Kullanıcı Yönetimi</a>
             </div>
 
-            <!-- Çıkış Butonu (En Alta İter) -->
             <a href="#" id="btnLogout" class="mt-auto bg-danger text-white border-0"><i class="fa-solid fa-right-from-bracket me-2"></i> Çıkış Yap</a>
         </nav>
 
-        <!-- SAĞ TARAF -->
         <div class="main-content">
-            <!-- ÜST BAR -->
-            <!-- ÜST BAR -->
             <header class="topbar">
                 <h4 class="m-0 text-secondary fw-bold" id="pageTitle">@ViewData["Title"]</h4>
 
-                <!-- YENİ: Tıklanabilir Profil Alanı -->
-                <a href="/Home/Profile" class="d-flex align-items-center text-decoration-none p-2 rounded" style="cursor: pointer; transition: 0.2s;">
+                <a href="/Home/Profile" class="d-flex align-items-center text-decoration-none p-2 rounded" style="cursor: pointer;">
                     <div class="text-end me-3">
+                        <button id="btnDarkModeToggle" class="btn btn-sm btn-outline-secondary rounded-circle me-3" title="Karanlık/Aydınlık Tema">
+                            <i class="fa-solid fa-moon" id="iconTheme"></i>
+                        </button>
                         <span class="d-block fw-bold text-dark" id="lblUserName">Kullanıcı Bekleniyor...</span>
                         <span class="badge bg-primary" id="lblUserRole">Yetki Yok</span>
                     </div>
-                    <img class="img-profile rounded-circle shadow-sm border border-2 border-primary" src="https://ui-avatars.com/api/?name=U&background=4e73df&color=fff" width="45" height="45" id="imgUserAvatar">
+                    <img class="img-profile rounded-circle shadow-sm border border-2 border-primary object-fit-cover" src="https://ui-avatars.com/api/?name=U&background=4e73df&color=fff" width="45" height="45" id="imgUserAvatar">
                 </a>
             </header>
 
-            <!-- GÖVDE (DİNAMİK İÇERİK BURAYA GELECEK) -->
             <main class="content">
                 @RenderBody()
             </main>
         </div>
     </div>
 
-    <!-- Jquery -->
     <script src="https://code.jquery.com/jquery-3.7.1.min.js"></script>
-    <!-- Bootstrap 5 JS -->
     <script src="https://cdn.jsdelivr.net/npm/bootstrap@5.3.2/dist/js/bootstrap.bundle.min.js"></script>
-    <!-- SweetAlert2 -->
     <script src="https://cdn.jsdelivr.net/npm/sweetalert2@11"></script>
 
-    <!-- GÜVENLİK VE AJAX MİMARİSİ -->
     <script>
-        // JWT Token'ı çözen fonksiyon
         function parseJwt(token) {
             try {
                 var base64Url = token.split('.')[1];
@@ -158,7 +144,28 @@
         }
 
         $(document).ready(function () {
-            // 1. JWT Token Kontrolü
+                    // --- DARK MODE MANTIĞI ---
+        var isDark = localStorage.getItem("theme") === "dark";
+
+        // Sayfa ilk yüklendiğinde hafızadaki temayı uygula
+        if (isDark) {
+            $("body").addClass("dark-mode");
+            $("#iconTheme").removeClass("fa-moon").addClass("fa-sun text-warning");
+        }
+
+        // Butona tıklandığında temayı değiştir ve hafızaya kaydet
+        $("#btnDarkModeToggle").click(function () {
+            $("body").toggleClass("dark-mode");
+            var currentlyDark = $("body").hasClass("dark-mode");
+
+            if (currentlyDark) {
+                localStorage.setItem("theme", "dark");
+                $("#iconTheme").removeClass("fa-moon").addClass("fa-sun text-warning");
+            } else {
+                localStorage.setItem("theme", "light");
+                $("#iconTheme").removeClass("fa-sun text-warning").addClass("fa-moon");
+            }
+        });
             var token = localStorage.getItem("token");
             if (!token) {
                 if (window.location.pathname.toLowerCase() !== "/auth/login" && window.location.pathname.toLowerCase() !== "/auth/register") {
@@ -167,56 +174,47 @@
             } else {
                 var decodedToken = parseJwt(token);
                 if(decodedToken) {
-                   var userName = decodedToken.FullName
-            || decodedToken["FullName"]
-            || decodedToken["http://schemas.xmlsoap.org/ws/2005/05/identity/claims/name"]
-            || decodedToken["http://schemas.xmlsoap.org/ws/2005/05/identity/claims/emailaddress"]
-            || decodedToken.email
-            || "KULLANICI";
+                    var userName = decodedToken.FullName || decodedToken["FullName"] || decodedToken.unique_name || "Kullanıcı";
+                    var userRole = decodedToken["http://schemas.microsoft.com/ws/2008/06/identity/claims/role"] || decodedToken.role || decodedToken.Role || "User";
 
-                    var userRole = decodedToken["http://schemas.microsoft.com/ws/2008/06/identity/claims/role"]
-                                || decodedToken.role
-                                || decodedToken.Role
-                                || "User";
-
-                    // Sağ üst köşedeki yazıları güncelle
                     $("#lblUserName").text(userName.toUpperCase());
                     $("#lblUserRole").text(userRole);
 
-                    // Profil resmini oluştur
+                    // Varsayılan avatarı oluştur
                     var firstLetter = userName.charAt(0).toUpperCase();
-                    $("#imgUserAvatar").attr("src", "https://ui-avatars.com/api/?name=" + firstLetter + "&background=4e73df&color=fff&bold=true");
+                    var defaultAvatar = "https://ui-avatars.com/api/?name=" + firstLetter + "&background=4e73df&color=fff&bold=true";
+                    $("#imgUserAvatar").attr("src", defaultAvatar);
 
-                    // ROL KONTROLLERİ VE MENÜ GİZLE/GÖSTER
+                    // Profil fotosu varsa arka planda çekip sağ üste bas
+                    $.ajax({
+                        url: "https://localhost:7094/api/Auth/GetProfile",
+                        type: "GET",
+                        headers: { "Authorization": "Bearer " + token },
+                        success: function(res) {
+                            if (res.status && res.data && res.data.profilePhoto && res.data.profilePhoto.length > 50) {
+                                $("#imgUserAvatar").attr("src", res.data.profilePhoto);
+                            }
+                        }
+                    });
+
                     if(userRole === "Admin" || userRole === "SuperAdmin") {
                         $("#adminMenu").show();
                         $("#lblUserRole").removeClass("bg-primary").addClass("bg-danger");
                     }
-
-                    // SADECE SUPERADMIN İÇİN KULLANICI YÖNETİMİ MENÜSÜNÜ AÇ
                     if(userRole === "SuperAdmin") {
                         $("#superAdminMenu").show();
-                        $("#lblUserRole").removeClass("bg-danger").addClass("bg-dark"); // SuperAdmin rozetini siyah yapalım daha havalı dursun
+                        $("#lblUserRole").removeClass("bg-danger").addClass("bg-dark");
                     }
                 }
             }
 
-            // 2. Çıkış Yapma İşlemi
             $("#btnLogout").click(function(e) {
                 e.preventDefault();
                 Swal.fire({
-                    title: 'Çıkış Yapılıyor',
-                    text: "Sistemden ayrılmak istediğinize emin misiniz?",
-                    icon: 'warning',
-                    showCancelButton: true,
-                    confirmButtonColor: '#d33',
-                    cancelButtonColor: '#3085d6',
-                    confirmButtonText: 'Evet, Çıkış Yap',
-                    cancelButtonText: 'İptal'
+                    title: 'Çıkış Yapılıyor', text: "Emin misiniz?", icon: 'warning', showCancelButton: true, confirmButtonText: 'Evet', cancelButtonText: 'İptal'
                 }).then((result) => {
                     if (result.isConfirmed) {
-                        localStorage.removeItem("token");
-                        localStorage.removeItem("refreshToken"); // Bunu da silelim ki arkada kalmasın
+                        localStorage.clear();
                         window.location.href = "/Auth/Login";
                     }
                 });
@@ -224,6 +222,7 @@
         });
     </script>
 
+    <!-- YENİ: Alt sayfalardan gelen özel JS'leri buraya basacak. HATA BURANIN EKSİKLİĞİNDEN ÇIKIYORDU! -->
     @await RenderSectionAsync("Scripts", required: false)
 </body>
 </html>

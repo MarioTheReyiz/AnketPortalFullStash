@@ -13,5 +13,11 @@ namespace AnketPortal.UI.Controllers
             ViewBag.SurveyId = id; // Anket ID'sini sayfaya taşıyoruz
             return View();
         }
+        // Sonuçları Grafiklerle Gösterme Sayfası
+        public IActionResult Results(int id)
+        {
+            ViewBag.SurveyId = id; // API'ye istek atarken URL'deki ID'yi kullanmak için ViewBag ile sayfaya yolluyoruz
+            return View();
+        }
     }
 }

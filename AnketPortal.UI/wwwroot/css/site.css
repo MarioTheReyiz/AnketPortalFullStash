@@ -20,3 +20,65 @@ html {
 body {
   margin-bottom: 60px;
 }
+
+    /* --- DARK MODE (GECE MODU) TASARIMI --- */
+    body.dark-mode {
+        background-color: #121212 !important;
+        color: #e0e0e0 !important;
+    }
+
+        body.dark-mode .sidebar {
+            background: #1a1c23 !important;
+            border-right: 1px solid #333;
+        }
+
+        body.dark-mode .topbar {
+            background: #1f2937 !important;
+            border-bottom: 1px solid #333;
+        }
+
+        body.dark-mode .card {
+            background-color: #1f2937 !important;
+            border: 1px solid #333 !important;
+        }
+
+        body.dark-mode .card-header {
+            background-color: #283046 !important;
+            border-bottom: 1px solid #333 !important;
+        }
+
+        body.dark-mode .text-gray-800, body.dark-mode .text-dark {
+            color: #e0e0e0 !important;
+        }
+
+        body.dark-mode .table {
+            color: #e0e0e0 !important;
+        }
+
+        body.dark-mode .table-light {
+            background-color: #283046 !important;
+            color: #fff !important;
+            border-bottom: 1px solid #444;
+        }
+
+        body.dark-mode .table-hover > tbody > tr:hover {
+            background-color: #2c344a !important;
+            color: #fff;
+        }
+
+        body.dark-mode .modal-content {
+            background-color: #1f2937 !important;
+            color: #e0e0e0;
+        }
+
+        body.dark-mode input.form-control, body.dark-mode textarea.form-control, body.dark-mode select.form-select {
+            background-color: #374151 !important;
+            color: #fff !important;
+            border: 1px solid #4b5563 !important;
+        }
+
+        body.dark-mode .input-group-text {
+            background-color: #283046 !important;
+            color: #aaa;
+            border: 1px solid #4b5563 !important;
+        }
