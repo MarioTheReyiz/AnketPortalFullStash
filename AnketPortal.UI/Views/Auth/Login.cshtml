@@ -74,6 +74,7 @@
 
                 <hr class="my-4">
                 <div class="text-center">
+                    <!-- BURASI GÜNCELLENDİ: Kayıt sayfasına doğru yönlendirme -->
                     <a class="small text-decoration-none fw-bold" href="/Auth/Register">Hesap Oluştur!</a>
                 </div>
             </div>
@@ -81,13 +82,12 @@
     </div>
 
     <!-- Jquery ve SweetAlert2 Kütüphaneleri -->
-    <!-- Jquery ve SweetAlert2 Kütüphaneleri -->
     <script src="https://code.jquery.com/jquery-3.7.1.min.js"></script>
     <script src="https://cdn.jsdelivr.net/npm/sweetalert2@11"></script>
 
     <!-- AJAX İŞLEMLERİ -->
     <script>
-        // TOKEN ÇÖZÜCÜ FONKSİYON
+        // 1. TOKEN ÇÖZÜCÜ FONKSİYON
         function parseJwt(token) {
             try {
                 if(!token || token === "undefined" || token === "null") return null;
@@ -98,33 +98,35 @@
                 }).join(''));
                 return JSON.parse(jsonPayload);
             } catch (e) {
-                console.error("Token çözülemedi:", e);
+                console.error("Token parçalanamadı:", e);
                 return null;
             }
         }
 
         $(document).ready(function () {
 
-            // 1. KONTROL: Hafızada bozuk ("undefined") kalmış bir token varsa önce onu temizle!
+            // 2. SAYFA YÜKLENDİĞİNDE: BOZUK TOKEN KONTROLÜ (Geri sekmeyi engeller)
             var existingToken = localStorage.getItem("token");
-            if (existingToken === "undefined" || existingToken === "null") {
+
+            // Eğer "[object Object]" gibi bozuk bir veri kaydedilmişse hemen sil
+            if (existingToken && existingToken.length < 30) {
                 localStorage.removeItem("token");
             }
-            // 2. KONTROL: Eğer gerçek, sağlam bir token varsa direkt yönlendir
+            // Eğer gerçek ve uzun bir token varsa anında yönlendir
             else if (existingToken && existingToken.length > 50) {
                 var dToken = parseJwt(existingToken);
                 if (dToken) {
                     var currentRole = dToken["http://schemas.microsoft.com/ws/2008/06/identity/claims/role"] || dToken.role || dToken.Role || "User";
                     if(currentRole === "Admin" || currentRole === "SuperAdmin") {
-                        window.location.href = "/Home/Dashboard";
+                        window.location.replace("/Home/Dashboard");
                     } else {
-                        window.location.href = "/Home/Index";
+                        window.location.replace("/Home/Index");
                     }
                     return;
                 }
             }
 
-            // GİRİŞ YAP BUTONUNA TIKLANDIĞINDA
+            // 3. GİRİŞ YAP BUTONUNA TIKLANDIĞINDA
             $("#btnSubmit").click(function () {
                 var btn = $(this);
                 var userName = $("#txtUserName").val().trim();
@@ -135,6 +137,7 @@
                     return;
                 }
 
+                // Butonu Kilitler
                 btn.prop("disabled", true).html('<i class="fas fa-spinner fa-spin me-2"></i> Giriş Yapılıyor...');
 
                 $.ajax({
@@ -144,46 +147,80 @@
                     data: JSON.stringify({ UserName: userName, Password: password }),
                     success: function (res) {
 
-                        // İŞTE BÜYÜ BURADA: API'nin token'ı nasıl döndüğünü (res.data mı res.data.token mı) güvenceye alıyoruz.
-                        var jwtToken = res.data.token ? res.data.token : (typeof res.data === 'string' ? res.data : null);
+                        // 1. API Durumunu Kontrol Et (Büyük/Küçük harf duyarlılığı için ikisine de bakıyoruz)
+                        var isSuccess = res.status === true || res.Status === true;
+                        var msg = res.message || res.Message || "İşlem durumu anlaşılamadı.";
 
-                        if (res.status && jwtToken && jwtToken.length > 20) {
+                        // 2. İŞTE TOKEN AVCISI: API token'ı nerede saklıyor bulalım!
+                        var jwtToken = null;
+                        var rData = res.data || res.Data;
 
-                            // 1. Gerçek token'ı kaydet
+                        if (rData) {
+                            if (typeof rData === 'string') {
+                                jwtToken = rData; // Bazen token direkt data'nın kendisi olur
+                            } else {
+                                // Token'ın farklı isimlendirmelerini ara
+                                jwtToken = rData.token || rData.Token || rData.accessToken || rData.AccessToken;
+                            }
+                        }
+
+                        // Belki de data nesnesi içinde değil, direkt ana nesnededir
+                        if (!jwtToken) {
+                            jwtToken = res.token || res.Token || res.accessToken || res.AccessToken;
+                        }
+
+                        // BAŞARILI GİRİŞ (Hem API başarılı dedi, hem de Token bulunduysa)
+                        if (isSuccess && jwtToken && jwtToken.length > 20) {
+
+                            // Token'ı kaydet
                             localStorage.setItem("token", jwtToken);
 
-                            // 2. Token'ı Parçala ve Rolü Çek
+                            // Rolü bul
                             var decodedToken = parseJwt(jwtToken);
-                            var role = "User"; // Bulunamazsa varsayılan
-
+                            var role = "User";
                             if (decodedToken) {
                                 role = decodedToken["http://schemas.microsoft.com/ws/2008/06/identity/claims/role"] || decodedToken.role || decodedToken.Role || "User";
                             }
 
-                            // 3. YÖNLENDİR
+                            // YÖNLENDİR
                             Swal.fire({
                                 icon: 'success',
                                 title: 'Giriş Başarılı!',
                                 text: 'Sisteme yönlendiriliyorsunuz...',
-                                timer: 1200,
+                                timer: 1000,
                                 showConfirmButton: false
                             }).then(function() {
                                 if(role === "Admin" || role === "SuperAdmin") {
-                                    window.location.href = "/Home/Dashboard"; // Admine Özel Sayfa
+                                    window.location.replace("/Home/Dashboard");
                                 } else {
-                                    window.location.href = "/Home/Index"; // Standart Kullanıcı Sayfası
+                                    window.location.replace("/Home/Index");
                                 }
                             });
 
-                        } else {
-                            Swal.fire('Hata', res.message || 'Giriş yapılamadı (Sistem Token Vermedi).', 'error');
+                        }
+                        // APİ BAŞARILI DEDİ AMA TOKEN GELMEDİ (GİZEMİ ÇÖZECEK KISIM)
+                        else if (isSuccess && !jwtToken) {
+                            Swal.fire({
+                                icon: 'error',
+                                title: 'Token Bulunamadı!',
+                                text: 'API giriş başarılı dedi ama Token gelmedi. Lütfen F12 konsoluna bakın. Gelen Veri: ' + JSON.stringify(res)
+                            });
+                            console.log("Token Bulunamadı! API'den gelen tam yanıt:", res);
+                            btn.prop("disabled", false).html('<i class="fa-solid fa-right-to-bracket me-2"></i> Giriş Yap');
+                        }
+                        // ŞİFRE YANLIŞ VEYA NORMAL HATA DURUMU
+                        else {
+                            Swal.fire('Hata', msg, 'error');
                             btn.prop("disabled", false).html('<i class="fa-solid fa-right-to-bracket me-2"></i> Giriş Yap');
                         }
                     },
                     error: function (xhr) {
-                        console.log(xhr.responseText);
-                        var errorMsg = 'Bağlantı kurulamadı veya bilgiler yanlış.';
-                        if(xhr.responseJSON && xhr.responseJSON.message) errorMsg = xhr.responseJSON.message;
+                        var errorMsg = 'Bağlantı kurulamadı. Sunucu kapalı olabilir.';
+                        if(xhr.responseJSON && xhr.responseJSON.message) {
+                            errorMsg = xhr.responseJSON.message;
+                        } else if (xhr.responseJSON && xhr.responseJSON.Message) {
+                            errorMsg = xhr.responseJSON.Message;
+                        }
 
                         Swal.fire('Hata!', errorMsg, 'error');
                         btn.prop("disabled", false).html('<i class="fa-solid fa-right-to-bracket me-2"></i> Giriş Yap');
@@ -191,6 +228,7 @@
                 });
             });
 
+            // Şifre kutusunda Enter'a basıldığında da tetiklensin
             $("#txtPassword").keypress(function (e) {
                 if (e.which == 13) $("#btnSubmit").click();
             });

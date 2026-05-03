@@ -1,0 +1,222 @@
+﻿@{
+    // Bu sayfa kayıt sayfası olduğu için Master Page (Layout) kullanılmasın
+    Layout = null;
+}
+
+<!DOCTYPE html>
+<html lang="tr">
+<head>
+    <meta charset="utf-8" />
+    <meta name="viewport" content="width=device-width, initial-scale=1.0" />
+    <title>Kayıt Ol - Anket Portalı</title>
+    
+    <!-- Bootstrap 5 CSS -->
+    <link href="https://cdn.jsdelivr.net/npm/bootstrap@5.3.2/dist/css/bootstrap.min.css" rel="stylesheet">
+    <!-- FontAwesome -->
+    <link rel="stylesheet" href="https://cdnjs.cloudflare.com/ajax/libs/font-awesome/6.4.2/css/all.min.css">
+    <!-- Bayraklı Telefon Kütüphanesi CSS -->
+    <link rel="stylesheet" href="https://cdn.jsdelivr.net/npm/intl-tel-input@18.2.1/build/css/intlTelInput.css">
+    
+    <style>
+        body {
+            background: #4e73df;
+            min-height: 100vh;
+            display: flex;
+            align-items: center;
+            justify-content: center;
+            font-family: 'Segoe UI', sans-serif;
+            padding: 20px 0;
+        }
+
+        .register-card {
+            background: white;
+            border-radius: 1rem;
+            box-shadow: 0 0.5rem 1rem rgba(0, 0, 0, 0.15);
+            overflow: hidden;
+            width: 100%;
+            max-width: 1000px;
+        }
+
+        .register-image {
+            background: url('https://source.unsplash.com/600x900/?team,join') center center;
+            background-size: cover;
+            height: 100%;
+            min-height: 500px;
+        }
+
+        /* Telefon inputunun genişliğini düzeltmek için */
+        .iti { width: 100%; display: block; }
+        .iti .form-control { padding-left: 90px !important; }
+    </style>
+</head>
+<body>
+
+    <div class="container">
+        <div class="register-card row mx-auto">
+            <!-- Sol Taraf (Resim) -->
+            <div class="col-lg-5 d-none d-lg-block p-0">
+                <div class="register-image"></div>
+            </div>
+            
+            <!-- Sağ Taraf (Kayıt Formu) -->
+            <div class="col-lg-7 p-5">
+                <div class="text-center mb-4">
+                    <h1 class="h4 text-gray-900 mb-2 fw-bold"><i class="fa-solid fa-user-plus text-primary"></i> Yeni Hesap Oluştur</h1>
+                    <p class="text-muted small">Anket Portalı'na katılmak için bilgilerini doldur.</p>
+                </div>
+
+                <form id="frmRegister" onsubmit="return false;">
+                    <div class="row">
+                        <div class="col-sm-6 mb-3">
+                            <label class="form-label text-muted small fw-bold">Ad Soyad</label>
+                            <input type="text" class="form-control rounded-pill px-3" id="txtFullName" placeholder="Adınız Soyadınız" required>
+                        </div>
+                        <div class="col-sm-6 mb-3">
+                            <label class="form-label text-muted small fw-bold">Kullanıcı Adı</label>
+                            <input type="text" class="form-control rounded-pill px-3" id="txtUserName" placeholder="Kullanıcı Adı" required>
+                        </div>
+                    </div>
+
+                    <div class="row">
+                        <div class="col-sm-6 mb-3">
+                            <label class="form-label text-muted small fw-bold">E-Posta Adresi</label>
+                            <input type="email" class="form-control rounded-pill px-3" id="txtEmail" placeholder="ornek@gmail.com" required>
+                        </div>
+                        <div class="col-sm-6 mb-3">
+                            <label class="form-label text-muted small fw-bold">Telefon Numarası</label>
+                            <input type="text" class="form-control rounded-pill" id="txtPhone" placeholder="555 555 55 55">
+                        </div>
+                    </div>
+
+                    <div class="row">
+                        <div class="col-sm-6 mb-3">
+                            <label class="form-label text-muted small fw-bold">Şifre</label>
+                            <input type="password" class="form-control rounded-pill px-3" id="txtPassword" placeholder="Şifreniz" required>
+                        </div>
+                        <div class="col-sm-6 mb-4">
+                            <label class="form-label text-muted small fw-bold">Şifre Tekrar</label>
+                            <input type="password" class="form-control rounded-pill px-3" id="txtConfirmPassword" placeholder="Şifrenizi Doğrulayın" required>
+                        </div>
+                    </div>
+
+                    <button type="button" class="btn btn-primary w-100 rounded-pill p-3 fw-bold shadow-sm" id="btnRegister">
+                        <i class="fa-solid fa-paper-plane me-2"></i> Kaydımı Tamamla
+                    </button>
+                </form>
+
+                <hr class="my-4">
+                <div class="text-center">
+                    <a class="small text-decoration-none fw-bold" href="/Auth/Login">Zaten bir hesabın var mı? Giriş Yap!</a>
+                </div>
+            </div>
+        </div>
+    </div>
+
+    <!-- Kütüphaneler -->
+    <script src="https://code.jquery.com/jquery-3.7.1.min.js"></script>
+    <script src="https://cdn.jsdelivr.net/npm/sweetalert2@11"></script>
+    <script src="https://cdn.jsdelivr.net/npm/intl-tel-input@18.2.1/build/js/intlTelInput.min.js"></script>
+
+    <!-- AJAX İŞLEMLERİ -->
+    <script>
+        $(document).ready(function () {
+
+            // 1. TELEFON GİRİŞİNİ (BAYRAKLI) BAŞLAT
+            var phoneInputField = document.querySelector("#txtPhone");
+            var phoneInput = window.intlTelInput(phoneInputField, {
+                initialCountry: "tr",
+                separateDialCode: true,
+                utilsScript: "https://cdn.jsdelivr.net/npm/intl-tel-input@18.2.1/build/js/utils.js",
+            });
+
+            // 2. KAYIT OL BUTONUNA TIKLANDIĞINDA
+            $("#btnRegister").click(function () {
+                var btn = $(this);
+                
+                var fullName = $("#txtFullName").val().trim();
+                var userName = $("#txtUserName").val().trim();
+                var email = $("#txtEmail").val().trim();
+                var password = $("#txtPassword").val().trim();
+                var confirmPassword = $("#txtConfirmPassword").val().trim();
+                var phoneVal = phoneInput.getNumber(); // Uluslararası formatta telefonu alır (+90555...)
+
+                // Boş alan kontrolü
+                if(!fullName || !userName || !email || !password || !confirmPassword){
+                    Swal.fire('Eksik Bilgi', 'Lütfen tüm alanları doldurun.', 'warning');
+                    return;
+                }
+
+                // E-Posta format kontrolü
+                var emailPattern = /^[a-zA-Z0-z._-]+[a-zA-Z0-9.-]+\.[a-zA-Z]{2,4}$/;
+                if(!emailPattern.test(email)) {
+                    Swal.fire('Geçersiz E-Posta', 'Lütfen geçerli bir e-posta adresi (ör: isim@gmail.com) girin.', 'warning');
+                    return;
+                }
+
+                // Telefon geçerlilik kontrolü (Eğer bir şey yazıldıysa)
+                if (phoneVal && !phoneInput.isValidNumber()) {
+                    Swal.fire('Geçersiz Telefon', 'Lütfen seçtiğiniz ülkeye uygun, geçerli bir telefon numarası girin!', 'warning');
+                    return;
+                }
+
+                // Şifre eşleşme kontrolü
+                if (password !== confirmPassword) {
+                    Swal.fire('Şifre Hatası', 'Girdiğiniz şifreler birbiriyle eşleşmiyor.', 'error');
+                    return;
+                }
+
+                // Butonu Kilitler
+                btn.prop("disabled", true).html('<i class="fas fa-spinner fa-spin me-2"></i> Hesabınız Oluşturuluyor...');
+
+                // API'ye gönderilecek veri paketi (Backend'deki RegisterDto'na uyumlu olmalı)
+                var payload = {
+                    FullName: fullName,
+                    UserName: userName,
+                    Email: email,
+                    PhoneNumber: phoneVal,
+                    Password: password
+                };
+
+                $.ajax({
+                    url: "https://localhost:7094/api/Auth/Register", // API URL'i
+                    type: "POST",
+                    contentType: "application/json",
+                    data: JSON.stringify(payload),
+                    success: function (res) {
+                        if (res.status === true) {
+                            Swal.fire({
+                                icon: 'success', 
+                                title: 'Aramıza Hoş Geldin!', 
+                                text: 'Hesabın başarıyla oluşturuldu. Giriş sayfasına yönlendiriliyorsun...', 
+                                timer: 2000, 
+                                showConfirmButton: false
+                            }).then(function() {
+                                window.location.replace("/Auth/Login"); 
+                            });
+                        } else {
+                            Swal.fire('Kayıt Başarısız', res.message || 'Bilgileriniz kaydedilemedi.', 'error');
+                            btn.prop("disabled", false).html('<i class="fa-solid fa-paper-plane me-2"></i> Kaydımı Tamamla');
+                        }
+                    },
+                    error: function (xhr) {
+                        var errorMsg = 'Sunucuya ulaşılamadı. Lütfen daha sonra tekrar deneyin.';
+                        if(xhr.responseJSON && xhr.responseJSON.message) {
+                            errorMsg = xhr.responseJSON.message;
+                        } else if (xhr.responseJSON && xhr.responseJSON.Message) {
+                            errorMsg = xhr.responseJSON.Message;
+                        }
+
+                        Swal.fire('Kritik Hata!', errorMsg, 'error');
+                        btn.prop("disabled", false).html('<i class="fa-solid fa-paper-plane me-2"></i> Kaydımı Tamamla');
+                    }
+                });
+            });
+
+            // Şifre kutusunda Enter'a basıldığında da tetiklensin
+            $("#txtConfirmPassword").keypress(function (e) {
+                if (e.which == 13) $("#btnRegister").click();
+            });
+        });
+    </script>
+</body>
+</html>
