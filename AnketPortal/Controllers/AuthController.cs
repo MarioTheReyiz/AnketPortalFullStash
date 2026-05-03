@@ -87,18 +87,27 @@ namespace AnketPortal.API.Controllers
             return BadRequest(new ResultDto { Status = false, Message = "Yetki verilemedi.", Data = result.Errors });
         }
 
-        [HttpPost("RefreshToken")] // Jeton Yenileme API'si
-        public async Task<IActionResult> RefreshToken([FromBody] string refreshToken)
+        // Frontend'den gelecek nesneyi karşılayacak basit sınıf
+        public class RefreshTokenRequestDto
         {
+            public string RefreshToken { get; set; }
+        }
+
+        [HttpPost("RefreshToken")] // Jeton Yenileme API'si
+        public async Task<IActionResult> RefreshToken([FromBody] RefreshTokenRequestDto model)
+        {
+            if (string.IsNullOrEmpty(model?.RefreshToken))
+                return BadRequest(new ResultDto { Status = false, Message = "Refresh Token boş olamaz." });
+
             // Veritabanında bu refresh token'a sahip kullanıcıyı bul
-            var user = await _userManager.Users.FirstOrDefaultAsync(u => u.RefreshToken == refreshToken);
+            var user = await _userManager.Users.FirstOrDefaultAsync(u => u.RefreshToken == model.RefreshToken);
 
             if (user == null || user.RefreshTokenEndDate < DateTime.Now)
                 return Unauthorized(new ResultDto { Status = false, Message = "Oturum süresi dolmuş veya geçersiz jeton. Lütfen tekrar giriş yapın." });
 
             var roles = await _userManager.GetRolesAsync(user);
 
-            // Yeni jetonları üret (Metot ismini GenerateToken olarak düzelttim)
+            // Yeni jetonları üret
             var tokenResponse = _tokenService.GenerateToken(user, roles);
 
             // Veritabanındaki refresh token bilgilerini tazele
