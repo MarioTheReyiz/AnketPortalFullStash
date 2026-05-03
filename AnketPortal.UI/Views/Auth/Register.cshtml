@@ -147,7 +147,7 @@
                 }
 
                 // E-Posta format kontrolü
-                var emailPattern = /^[a-zA-Z0-z._-]+[a-zA-Z0-9.-]+\.[a-zA-Z]{2,4}$/;
+                var emailPattern = /^[a-zA-Z0-z._-]+@@[a-zA-Z0-9.-]+\.[a-zA-Z]{2,4}$/;
                 if(!emailPattern.test(email)) {
                     Swal.fire('Geçersiz E-Posta', 'Lütfen geçerli bir e-posta adresi (ör: isim@gmail.com) girin.', 'warning');
                     return;
@@ -168,7 +168,7 @@
                 // Butonu Kilitler
                 btn.prop("disabled", true).html('<i class="fas fa-spinner fa-spin me-2"></i> Hesabınız Oluşturuluyor...');
 
-                // API'ye gönderilecek veri paketi (Backend'deki RegisterDto'na uyumlu olmalı)
+                // API'ye gönderilecek veri paketi
                 var payload = {
                     FullName: fullName,
                     UserName: userName,
@@ -177,13 +177,15 @@
                     Password: password
                 };
 
+                // API'ye İstek At
                 $.ajax({
-                    url: "https://localhost:7094/api/Auth/Register", // API URL'i
+                    url: "https://localhost:7094/api/Auth/Register", 
                     type: "POST",
                     contentType: "application/json",
                     data: JSON.stringify(payload),
                     success: function (res) {
-                        if (res.status === true) {
+                        // Eğer API "başarılı" dönerse
+                        if (res.status === true || res.Status === true) {
                             Swal.fire({
                                 icon: 'success', 
                                 title: 'Aramıza Hoş Geldin!', 
@@ -194,19 +196,46 @@
                                 window.location.replace("/Auth/Login"); 
                             });
                         } else {
-                            Swal.fire('Kayıt Başarısız', res.message || 'Bilgileriniz kaydedilemedi.', 'error');
+                            // API başarılı dönemedi (Örn: Aynı email var)
+                            Swal.fire('Kayıt Başarısız', res.message || res.Message || 'Bilgileriniz kaydedilemedi.', 'error');
                             btn.prop("disabled", false).html('<i class="fa-solid fa-paper-plane me-2"></i> Kaydımı Tamamla');
                         }
                     },
                     error: function (xhr) {
-                        var errorMsg = 'Sunucuya ulaşılamadı. Lütfen daha sonra tekrar deneyin.';
-                        if(xhr.responseJSON && xhr.responseJSON.message) {
-                            errorMsg = xhr.responseJSON.message;
-                        } else if (xhr.responseJSON && xhr.responseJSON.Message) {
-                            errorMsg = xhr.responseJSON.Message;
+                        console.log("HATA DETAYI:", xhr); // F12 Konsola hatanın tam metnini yazar
+                        
+                        var errorMsg = 'Sunucuya ulaşılamadı veya bilinmeyen bir hata.';
+                        
+                        // .NET Identity'nin gönderdiği detaylı hataları yakalama
+                        if (xhr.responseJSON) {
+                            if (xhr.responseJSON.message) {
+                                errorMsg = xhr.responseJSON.message;
+                            } else if (xhr.responseJSON.Message) {
+                                errorMsg = xhr.responseJSON.Message;
+                            } else if (xhr.responseJSON.errors) {
+                                // .NET Core Validasyon (Doğrulama) hatalarını birleştir
+                                var errorArray = [];
+                                for (var key in xhr.responseJSON.errors) {
+                                    errorArray.push(xhr.responseJSON.errors[key][0]);
+                                }
+                                errorMsg = errorArray.join("<br>");
+                            } else {
+                                // Gelen hiçbir şeye uymazsa direkt JSON'u bas
+                                errorMsg = JSON.stringify(xhr.responseJSON);
+                            }
                         }
 
-                        Swal.fire('Kritik Hata!', errorMsg, 'error');
+                        // Eğer mesaj sadece "Hata oluştu" gibiyse, şifre/kullanıcı adı kuralı hatırlatması yap
+                        if(errorMsg === "Hata oluştu" || errorMsg === "Hata oluştu.") {
+                            errorMsg = "API kaydı reddetti! Şunlara dikkat et:<br><b>1.</b> Şifren en az 1 Büyük Harf, 1 Küçük Harf, Rakam ve Özel Karakter (*,!) içermelidir.<br><b>2.</b> Kullanıcı adında boşluk veya Türkçe karakter olmamalıdır.";
+                        }
+
+                        Swal.fire({
+                            icon: 'error',
+                            title: 'Kritik Hata!',
+                            html: errorMsg // Hata mesajı birden fazlaysa alt alta düzgün yazsın diye html kullandık
+                        });
+                        
                         btn.prop("disabled", false).html('<i class="fa-solid fa-paper-plane me-2"></i> Kaydımı Tamamla');
                     }
                 });
