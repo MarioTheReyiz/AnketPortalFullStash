@@ -97,12 +97,23 @@
 </div>
 
 @section Scripts {
+    <!-- Bayraklı Telefon Kütüphanesinin JavaScript Dosyaları -->
+    <script src="https://cdn.jsdelivr.net/npm/intl-tel-input@18.2.1/build/js/intlTelInput.min.js"></script>
+
     <script>
         function getToken() { return localStorage.getItem("token"); }
 
         $(document).ready(function () {
-            
-            // 1. SAYFA AÇILINCA API'DEN VERİLERİ ÇEK
+
+            // --- TELEFON GİRİŞİNİ (BAYRAKLI) BAŞLAT ---
+            var phoneInputField = document.querySelector("#txtPhone");
+            var phoneInput = window.intlTelInput(phoneInputField, {
+                initialCountry: "tr",
+                separateDialCode: true,
+                utilsScript: "https://cdn.jsdelivr.net/npm/intl-tel-input@18.2.1/build/js/utils.js",
+            });
+
+            // --- 1. API'DEN VERİLERİ ÇEK (401 KONTROLLÜ) ---
             $.ajax({
                 url: "https://localhost:7094/api/Auth/GetProfile",
                 type: "GET",
@@ -111,19 +122,16 @@
                     if (res.status) {
                         var user = res.data;
 
-                        // Sol Taraf (Görsel ve Özet)
                         $("#lblFullName").text(user.fullName);
-                        
                         $("#lblUserName").text(String.fromCharCode(64) + user.userName);
 
-                        if(user.role === "SuperAdmin") 
+                        if(user.role === "SuperAdmin")
                             $("#lblRoleBadge").html('<span class="badge bg-dark"><i class="fa fa-crown text-warning me-1"></i> SuperAdmin</span>');
-                        else if(user.role === "Admin") 
+                        else if(user.role === "Admin")
                             $("#lblRoleBadge").html('<span class="badge bg-danger"><i class="fa fa-shield-halved me-1"></i> Admin</span>');
-                        else 
+                        else
                             $("#lblRoleBadge").html('<span class="badge bg-secondary"><i class="fa fa-user me-1"></i> Standart Kullanıcı</span>');
 
-                        // Profil Fotoğrafı Kontrolü (DB'de varsa onu bas, yoksa isminin baş harfini)
                         if (user.profilePhoto && user.profilePhoto.length > 50) {
                             $("#profileAvatarDisplay").attr("src", user.profilePhoto);
                         } else {
@@ -131,25 +139,34 @@
                             $("#profileAvatarDisplay").attr("src", "https://ui-avatars.com/api/?name=" + firstLetter + "&background=4e73df&color=fff&bold=true&size=150");
                         }
 
-                        // Sağ Taraf (Form)
                         $("#txtUsername").val(user.userName);
                         $("#txtFullName").val(user.fullName);
                         $("#txtEmail").val(user.email);
-                        $("#txtPhone").val(user.phoneNumber);
+
+                        if(user.phoneNumber) {
+                            phoneInput.setNumber(user.phoneNumber);
+                        }
+                    }
+                },
+                error: function(xhr) {
+                    // EĞER TOKEN SÜRESİ DOLMUŞSA (401)
+                    if(xhr.status === 401) {
+                        Swal.fire('Oturum Düştü', 'Oturum süreniz doldu. Lütfen tekrar giriş yapın.', 'warning').then(() => {
+                            localStorage.removeItem("token");
+                            window.location.href = "/Auth/Login";
+                        });
                     }
                 }
             });
 
-            // 2. FOTOĞRAF SEÇİCİYE TIKLAMA OLAYI
+            // --- 2. FOTOĞRAF SEÇME İŞLEMLERİ ---
             $("#btnTriggerPhotoUpload").click(function () {
                 $("#filePhoto").click();
             });
 
-            // 3. FOTOĞRAF SEÇİLİNCE BASE64'E ÇEVİR (EKRANDA GÖSTER)
             $("#filePhoto").change(function () {
                 var file = this.files[0];
                 if (file) {
-                    // Sadece resim dosyası mı kontrol et
                     if (!file.type.startsWith("image/")) {
                         Swal.fire('Hata', 'Lütfen sadece geçerli bir resim (PNG, JPG) seçin.', 'error');
                         return;
@@ -158,19 +175,24 @@
                     var reader = new FileReader();
                     reader.onload = function (e) {
                         var base64String = e.target.result;
-                        $("#profileAvatarDisplay").attr("src", base64String); // Ekranda anında değişsin
-                        $("#hdnBase64Photo").val(base64String); // Arka planda API'ye gidecek değere yaz
+                        $("#profileAvatarDisplay").attr("src", base64String);
+                        $("#hdnBase64Photo").val(base64String);
                     };
-                    reader.readAsDataURL(file); // Dosyayı metne çevirme işlemi başlar
+                    reader.readAsDataURL(file);
                 }
             });
 
-            // 4. BİLGİLERİ KAYDET
+            // --- 3. BİLGİLERİ KAYDET (401 KONTROLLÜ) ---
             $("#btnSaveProfile").click(function () {
-                
-                // HTML5 validasyonunu kontrol et (Gerekli alanlar boş mu?)
+
                 if (!$("#frmProfile")[0].checkValidity()) {
                     $("#frmProfile")[0].reportValidity();
+                    return;
+                }
+
+                var phoneVal = phoneInput.getNumber();
+                if (phoneVal && !phoneInput.isValidNumber()) {
+                    Swal.fire('Uyarı', 'Lütfen seçtiğiniz ülkeye uygun, geçerli bir telefon numarası girin!', 'warning');
                     return;
                 }
 
@@ -180,8 +202,8 @@
                 var payload = {
                     FullName: $("#txtFullName").val().trim(),
                     Email: $("#txtEmail").val().trim(),
-                    PhoneNumber: $("#txtPhone").val().trim(),
-                    ProfilePhoto: $("#hdnBase64Photo").val() // Değişmediyse boş gider, backend eskisini tutar
+                    PhoneNumber: phoneVal,
+                    ProfilePhoto: $("#hdnBase64Photo").val()
                 };
 
                 $.ajax({
@@ -193,23 +215,27 @@
                     success: function (res) {
                         if (res.status) {
                             Swal.fire({
-                                icon: 'success',
-                                title: 'Harika!',
-                                text: res.message,
-                                timer: 2000,
-                                showConfirmButton: false
+                                icon: 'success', title: 'Harika!', text: res.message, timer: 2000, showConfirmButton: false
                             }).then(() => {
-                                // Ekranı yenile ki güncel profil resmi Layout'un sağ üstüne falan da yansısın
-                                window.location.reload(); 
+                                window.location.reload();
                             });
                         }
                     },
                     error: function (xhr) {
-                        Swal.fire('Hata', 'Bilgileriniz güncellenirken bir sorun oluştu.', 'error');
-                        btn.prop("disabled", false).html('<i class="fa-solid fa-floppy-disk me-2"></i> Bilgilerimi Kaydet');
+                        // EĞER KAYDEDERKEN TOKEN DÜŞERSE
+                        if(xhr.status === 401) {
+                            Swal.fire('Oturum Düştü', 'Oturum süreniz doldu. Lütfen tekrar giriş yapın.', 'warning').then(() => {
+                                localStorage.removeItem("token");
+                                window.location.href = "/Auth/Login";
+                            });
+                        } else {
+                            Swal.fire('Hata', 'Bilgileriniz güncellenirken bir sorun oluştu.', 'error');
+                            btn.prop("disabled", false).html('<i class="fa-solid fa-floppy-disk me-2"></i> Bilgilerimi Kaydet');
+                        }
                     }
                 });
             });
         });
     </script>
+}
 }

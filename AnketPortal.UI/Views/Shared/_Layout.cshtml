@@ -81,7 +81,7 @@
             flex-grow: 1;
         }
 
-        /* YENİ: GARANTİLİ DARK MODE CSS KODLARI (SİTE.CSS İLE UĞRAŞMAYA GEREK YOK) */
+        /* KUSURSUZ DARK MODE CSS KODLARI */
         body.dark-mode {
             background-color: #121212 !important;
             color: #e0e0e0 !important;
@@ -97,9 +97,9 @@
                 border-bottom: 1px solid #333;
             }
 
-            body.dark-mode .card {
+            body.dark-mode .card, body.dark-mode .bg-white {
                 background-color: #1f2937 !important;
-                border: 1px solid #333 !important;
+                border-color: #333 !important;
             }
 
             body.dark-mode .card-header {
@@ -111,24 +111,35 @@
                 color: #e0e0e0 !important;
             }
 
-            body.dark-mode .table {
+            body.dark-mode .table, body.dark-mode .table td, body.dark-mode .table th {
                 color: #e0e0e0 !important;
+                border-color: #333 !important;
+                background-color: transparent !important;
             }
 
-            body.dark-mode .table-light {
-                background-color: #283046 !important;
-                color: #fff !important;
-                border-bottom: 1px solid #444;
-            }
+                body.dark-mode .table-light, body.dark-mode .table thead th {
+                    background-color: #283046 !important;
+                    color: #fff !important;
+                    border-bottom: 2px solid #444 !important;
+                }
 
-            body.dark-mode .table-hover > tbody > tr:hover {
+            body.dark-mode .table-hover > tbody > tr:hover > td, body.dark-mode .table-hover > tbody > tr:hover > th {
                 background-color: #2c344a !important;
-                color: #fff;
+                color: #fff !important;
             }
 
             body.dark-mode .modal-content {
                 background-color: #1f2937 !important;
                 color: #e0e0e0;
+                border: 1px solid #444;
+            }
+
+            body.dark-mode .modal-header {
+                border-bottom: 1px solid #333;
+            }
+
+            body.dark-mode .modal-footer {
+                border-top: 1px solid #333;
             }
 
             body.dark-mode input.form-control, body.dark-mode textarea.form-control, body.dark-mode select.form-select {
@@ -143,8 +154,8 @@
                 border: 1px solid #4b5563 !important;
             }
 
-            body.dark-mode .bg-white {
-                background-color: #1f2937 !important;
+            body.dark-mode .text-muted {
+                color: #9ca3af !important;
             }
     </style>
     @await RenderSectionAsync("Styles", required: false)
@@ -174,7 +185,7 @@
                 <h4 class="m-0 text-secondary fw-bold" id="pageTitle">@ViewData["Title"]</h4>
 
                 <div class="d-flex align-items-center">
-                    <!-- DARK MODE BUTONU: Tıklanabilir alandan tamamen izole edildi -->
+                    <!-- DARK MODE BUTONU -->
                     <button id="btnDarkModeToggle" class="btn btn-sm btn-outline-secondary rounded-circle me-3" title="Karanlık/Aydınlık Tema">
                         <i class="fa-solid fa-moon" id="iconTheme"></i>
                     </button>
@@ -200,6 +211,28 @@
     <script src="https://cdn.jsdelivr.net/npm/sweetalert2@11"></script>
 
     <script>
+        // --- DARK MODE MANTIĞI ---
+        var isDark = localStorage.getItem("theme") === "dark";
+
+        if (isDark) {
+            $("body").addClass("dark-mode");
+            $("#iconTheme").removeClass("fa-moon").addClass("fa-sun text-warning");
+        }
+
+        $("#btnDarkModeToggle").click(function (e) {
+            e.preventDefault();
+            $("body").toggleClass("dark-mode");
+            var currentlyDark = $("body").hasClass("dark-mode");
+
+            if (currentlyDark) {
+                localStorage.setItem("theme", "dark");
+                $("#iconTheme").removeClass("fa-moon").addClass("fa-sun text-warning");
+            } else {
+                localStorage.setItem("theme", "light");
+                $("#iconTheme").removeClass("fa-sun text-warning").addClass("fa-moon");
+            }
+        });
+
         function parseJwt(token) {
             try {
                 var base64Url = token.split('.')[1];
@@ -214,30 +247,8 @@
         }
 
         $(document).ready(function () {
-
-            // --- DARK MODE KONTROLÜ (Sayfa yüklenir yüklenmez çalışır) ---
-            var isDark = localStorage.getItem("theme") === "dark";
-            if (isDark) {
-                $("body").addClass("dark-mode");
-                $("#iconTheme").removeClass("fa-moon").addClass("fa-sun text-warning");
-            }
-
-            $("#btnDarkModeToggle").click(function (e) {
-                e.preventDefault();
-                $("body").toggleClass("dark-mode");
-                var currentlyDark = $("body").hasClass("dark-mode");
-
-                if (currentlyDark) {
-                    localStorage.setItem("theme", "dark");
-                    $("#iconTheme").removeClass("fa-moon").addClass("fa-sun text-warning");
-                } else {
-                    localStorage.setItem("theme", "light");
-                    $("#iconTheme").removeClass("fa-sun text-warning").addClass("fa-moon");
-                }
-            });
-            // -------------------------------------------------------------
-
             var token = localStorage.getItem("token");
+
             if (!token) {
                 if (window.location.pathname.toLowerCase() !== "/auth/login" && window.location.pathname.toLowerCase() !== "/auth/register") {
                     window.location.href = "/Auth/Login";
@@ -246,36 +257,51 @@
                 var decodedToken = parseJwt(token);
                 if(decodedToken) {
 
-                    var userName = decodedToken.FullName
-                        || decodedToken["FullName"]
-                        || decodedToken["http://schemas.xmlsoap.org/ws/2005/05/identity/claims/name"]
-                        || decodedToken.unique_name
-                        || "Kullanıcı";
-
                     var userRole = decodedToken["http://schemas.microsoft.com/ws/2008/06/identity/claims/role"] || decodedToken.role || decodedToken.Role || "User";
-
-                    $("#lblUserName").text(userName.toUpperCase());
                     $("#lblUserRole").text(userRole);
 
-                    var firstLetter = userName.charAt(0).toUpperCase();
+                    // Başlangıç olarak Token'dan bir isim bas (Beklerken boş görünmesin)
+                    var tempName = decodedToken.FullName || decodedToken["http://schemas.xmlsoap.org/ws/2005/05/identity/claims/name"] || "Kullanıcı";
+                    $("#lblUserName").text(tempName.toUpperCase());
+
+                    var firstLetter = tempName.charAt(0).toUpperCase();
                     var defaultAvatar = "https://ui-avatars.com/api/?name=" + firstLetter + "&background=4e73df&color=fff&bold=true";
                     $("#imgUserAvatar").attr("src", defaultAvatar);
 
-                    // VERİTABANINDAN GÜNCEL BİLGİLERİ (FOTOĞRAF VE GERÇEK İSİM) ÇEK
+                    // YENİ EKLENEN KISIM: TOKEN EXPIRE (401) KONTROLLÜ AJAX SORGUSU
                     $.ajax({
                         url: "https://localhost:7094/api/Auth/GetProfile",
                         type: "GET",
                         headers: { "Authorization": "Bearer " + token },
                         success: function(res) {
                             if (res.status && res.data) {
-                                // Fotoğraf varsa bas
-                                if(res.data.profilePhoto && res.data.profilePhoto.length > 50) {
-                                    $("#imgUserAvatar").attr("src", res.data.profilePhoto);
-                                }
-                                // Veritabanındaki gerçek ismi bas
+                                // 1. GERÇEK İSMİ YAZ (API'den ne geldiyse kesin o yazılır)
                                 if(res.data.fullName) {
                                     $("#lblUserName").text(res.data.fullName.toUpperCase());
                                 }
+
+                                // 2. FOTOĞRAFI BAS
+                                if(res.data.profilePhoto && res.data.profilePhoto.length > 50) {
+                                    $("#imgUserAvatar").attr("src", res.data.profilePhoto);
+                                } else {
+                                    // Fotoğraf yoksa gerçek ismin baş harfinden avatar yap
+                                    var realFirstLetter = (res.data.fullName || "U").charAt(0).toUpperCase();
+                                    $("#imgUserAvatar").attr("src", "https://ui-avatars.com/api/?name=" + realFirstLetter + "&background=4e73df&color=fff&bold=true");
+                                }
+                            }
+                        },
+                        error: function(xhr) {
+                            // EĞER HERHANGİ BİR SAYFADA GEZERKEN TOKEN BİTERSE/GEÇERSİZ OLURSA
+                            if(xhr.status === 401) {
+                                Swal.fire({
+                                    icon: 'warning',
+                                    title: 'Oturum Süresi Doldu',
+                                    text: 'Lütfen güvenliğiniz için tekrar giriş yapın.',
+                                    confirmButtonText: 'Giriş Yap'
+                                }).then(() => {
+                                    localStorage.removeItem("token");
+                                    window.location.href = "/Auth/Login";
+                                });
                             }
                         }
                     });
