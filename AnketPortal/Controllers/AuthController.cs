@@ -8,6 +8,22 @@ using Microsoft.EntityFrameworkCore;
 
 namespace AnketPortal.API.Controllers
 {
+    // Frontend'e listeleme için yollayacağımız DTO
+    public class UserListDto
+    {
+        public string Id { get; set; }
+        public string UserName { get; set; }
+        public string FullName { get; set; }
+        public string Email { get; set; }
+        public IList<string> Roles { get; set; }
+    }
+
+    // Refresh Token için DTO
+    public class RefreshTokenRequestDto
+    {
+        public string RefreshToken { get; set; }
+    }
+
     [Route("api/[controller]")]
     [ApiController]
     public class AuthController : ControllerBase
@@ -69,33 +85,62 @@ namespace AnketPortal.API.Controllers
             return Unauthorized(new ResultDto { Status = false, Message = "Kullanıcı adı veya şifre hatalı" });
         }
 
-        [Authorize(Roles = "SuperAdmin")] // Yetki Atama API'si
+        // --- YENİ: KULLANICILARI LİSTELEME ---
+        [Authorize(Roles = "SuperAdmin")]
+        [HttpGet("GetUsers")]
+        public async Task<IActionResult> GetUsers()
+        {
+            var users = await _userManager.Users.ToListAsync();
+            var userList = new List<UserListDto>();
+
+            foreach (var user in users)
+            {
+                var roles = await _userManager.GetRolesAsync(user);
+                userList.Add(new UserListDto
+                {
+                    Id = user.Id,
+                    UserName = user.UserName,
+                    FullName = user.FullName,
+                    Email = user.Email,
+                    Roles = roles
+                });
+            }
+
+            return Ok(new ResultDto { Status = true, Data = userList });
+        }
+
+        // --- GÜNCELLENEN: YETKİ ATAMA (Eskisini sil, yenisini ver) ---
+        [Authorize(Roles = "SuperAdmin")] // Sadece SuperAdminler yetki değiştirebilir
         [HttpPost("AssignRole")]
         public async Task<IActionResult> AssignRole(RoleAssignDto model)
         {
             var user = await _userManager.FindByNameAsync(model.UserName);
             if (user == null) return NotFound(new ResultDto { Status = false, Message = "Kullanıcı bulunamadı." });
 
+            var currentRoles = await _userManager.GetRolesAsync(user);
+
+            // GÜVENLİK: SuperAdmin kendi veya başka bir SuperAdmin'in yetkisini asla DÜŞÜREMEZ.
+            if (currentRoles.Contains("SuperAdmin"))
+            {
+                return BadRequest(new ResultDto { Status = false, Message = "SuperAdmin yetkisi değiştirilemez!" });
+            }
+
             if (!await _roleManager.RoleExistsAsync(model.RoleName))
                 return BadRequest(new ResultDto { Status = false, Message = "Böyle bir rol sistemde yok." });
 
+            // Önce kullanıcının sahip olduğu tüm eski rolleri sil (User ve Admin çakışmasın diye)
+            await _userManager.RemoveFromRolesAsync(user, currentRoles);
+
+            // Sonra yeni gelen tek rolü (User veya Admin) ata
             var result = await _userManager.AddToRoleAsync(user, model.RoleName);
 
             if (result.Succeeded)
-                return Ok(new ResultDto { Status = true, Message = $"{user.UserName} adlı kullanıcıya '{model.RoleName}' yetkisi verildi." });
+                return Ok(new ResultDto { Status = true, Message = $"{user.UserName} kullanıcısının yetkisi '{model.RoleName}' olarak değiştirildi." });
 
             return BadRequest(new ResultDto { Status = false, Message = "Yetki verilemedi.", Data = result.Errors });
         }
 
-        // Frontend'den gelecek nesneyi karşılayacak basit sınıf
-        // Bu küçük sınıfı AuthController.cs içine (veya DTOs klasörüne) ekle
-        public class RefreshTokenRequestDto
-        {
-            public string RefreshToken { get; set; }
-        }
-
-        // Mevcut RefreshToken metodunu şununla değiştir:
-        [HttpPost("RefreshToken")]
+        [HttpPost("RefreshToken")] // Jeton Yenileme API'si
         public async Task<IActionResult> RefreshToken([FromBody] RefreshTokenRequestDto model)
         {
             // model null ise veya içi boşsa
@@ -106,7 +151,7 @@ namespace AnketPortal.API.Controllers
             var user = await _userManager.Users.FirstOrDefaultAsync(u => u.RefreshToken == model.RefreshToken);
 
             if (user == null || user.RefreshTokenEndDate < DateTime.Now)
-                return Unauthorized(new ResultDto { Status = false, Message = "Geçersiz veya süresi dolmuş token." });
+                return Unauthorized(new ResultDto { Status = false, Message = "Geçersiz veya süresi dolmuş token. Lütfen tekrar giriş yapın." });
 
             var roles = await _userManager.GetRolesAsync(user);
 

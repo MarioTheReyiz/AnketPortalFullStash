@@ -1,0 +1,156 @@
+﻿@{
+    ViewData["Title"] = "Kullanıcı Yönetimi";
+}
+
+<div class="container-fluid mt-4">
+    <div class="d-sm-flex align-items-center justify-content-between mb-4">
+        <h1 class="h3 mb-0 text-gray-800 fw-bold"><i class="fa-solid fa-users-gear text-primary me-2"></i> Kullanıcı Yetki Yönetimi</h1>
+    </div>
+
+    <div class="card shadow border-left-primary mb-4">
+        <div class="card-header py-3 d-flex flex-row align-items-center justify-content-between bg-white">
+            <h6 class="m-0 fw-bold text-primary">Kayıtlı Kullanıcılar</h6>
+
+            <div class="d-flex align-items-center">
+                <span class="me-2 fw-bold text-muted small">Filtrele:</span>
+                <select id="roleFilter" class="form-select form-select-sm" style="width: 150px; cursor:pointer;">
+                    <option value="All">Tümü</option>
+                    <option value="SuperAdmin">Sadece SuperAdminler</option>
+                    <option value="Admin">Sadece Adminler</option>
+                    <option value="User">Sadece Kullanıcılar</option>
+                </select>
+            </div>
+        </div>
+        <div class="card-body p-0">
+            <div class="table-responsive">
+                <table class="table table-hover align-middle mb-0">
+                    <thead class="table-light text-muted">
+                        <tr>
+                            <th class="ps-4">Kullanıcı Adı</th>
+                            <th>Ad Soyad</th>
+                            <th>E-Posta</th>
+                            <th>Mevcut Yetki</th>
+                            <th class="text-end pe-4">İşlem</th>
+                        </tr>
+                    </thead>
+                    <tbody id="userTableBody">
+                        <tr><td colspan="5" class="text-center text-muted py-5"><i class="fas fa-spinner fa-spin fa-2x mb-2 text-primary"></i><br>Kullanıcılar yükleniyor...</td></tr>
+                    </tbody>
+                </table>
+            </div>
+        </div>
+    </div>
+</div>
+
+@section Scripts {
+    <script>
+        var allUsers = [];
+
+        function getToken() { return localStorage.getItem("token"); }
+
+        $(document).ready(function () {
+            loadUsers();
+
+            $("#roleFilter").change(function () {
+                renderUsers($(this).val());
+            });
+
+            function loadUsers() {
+                $.ajax({
+                    url: "https://localhost:7094/api/Auth/GetUsers",
+                    type: "GET",
+                    headers: { "Authorization": "Bearer " + getToken() },
+                    success: function (res) {
+                        if (res.status) {
+                            allUsers = res.data || [];
+                            renderUsers("All");
+                        }
+                    },
+                    error: function (xhr) {
+                        if(xhr.status === 403) {
+                             $("#userTableBody").html('<tr><td colspan="5" class="text-center text-danger py-4 fw-bold"><i class="fa fa-ban fa-2x mb-2"></i><br>Bu sayfayı görmeye yetkiniz yok (Sadece SuperAdmin).</td></tr>');
+                        } else {
+                             $("#userTableBody").html('<tr><td colspan="5" class="text-center text-danger py-4">Veriler yüklenirken hata oluştu.</td></tr>');
+                        }
+                    }
+                });
+            }
+
+            function renderUsers(filterRole) {
+                var html = "";
+
+                var filteredUsers = allUsers;
+                if (filterRole !== "All") {
+                    filteredUsers = allUsers.filter(u => u.roles.includes(filterRole));
+                }
+
+                if (filteredUsers.length > 0) {
+                    filteredUsers.forEach(function (user) {
+                        var mainRole = user.roles.length > 0 ? user.roles[0] : "Yok";
+
+                        var roleBadge = "";
+                        if (mainRole === "SuperAdmin") roleBadge = '<span class="badge bg-dark"><i class="fa fa-crown text-warning"></i> SuperAdmin</span>';
+                        else if (mainRole === "Admin") roleBadge = '<span class="badge bg-primary">Admin</span>';
+                        else roleBadge = '<span class="badge bg-secondary">User</span>';
+
+                        var actionButton = "";
+                        if (mainRole !== "SuperAdmin") {
+                            var targetRole = mainRole === "Admin" ? "User" : "Admin";
+                            var btnColor = mainRole === "Admin" ? "btn-outline-danger" : "btn-outline-success";
+                            var btnIcon = mainRole === "Admin" ? "fa-arrow-down" : "fa-arrow-up";
+                            var btnText = mainRole === "Admin" ? "Yetkiyi Al" : "Admin Yap";
+
+                            actionButton = `<button class="btn btn-sm ${btnColor} btn-change-role" data-username="${user.userName}" data-role="${targetRole}">
+                                                <i class="fa ${btnIcon}"></i> ${btnText}
+                                            </button>`;
+                        } else {
+                             actionButton = `<span class="text-muted small fst-italic">Değiştirilemez</span>`;
+                        }
+
+                        html += `
+                            <tr>
+                                <td class="ps-4 fw-bold">&#64;${user.userName}</td>
+                                <td>${user.fullName}</td>
+                                <td>${user.email}</td>
+                                <td>${roleBadge}</td>
+                                <td class="text-end pe-4">${actionButton}</td>
+                            </tr>`;
+                    });
+                } else {
+                    html = `<tr><td colspan="5" class="text-center text-muted py-4">Bu filtreye uygun kullanıcı bulunamadı.</td></tr>`;
+                }
+                $("#userTableBody").html(html);
+            }
+
+            $(document).on("click", ".btn-change-role", function () {
+                var username = $(this).data("username");
+                var newRole = $(this).data("role");
+
+                Swal.fire({
+                    title: 'Emin misiniz?',
+                    text: username + " kullanıcısının yetkisi " + newRole + " olarak değiştirilecek!",
+                    icon: 'warning',
+                    showCancelButton: true,
+                    confirmButtonText: 'Evet, Değiştir',
+                    cancelButtonText: 'İptal'
+                }).then((result) => {
+                    if (result.isConfirmed) {
+                        $.ajax({
+                            url: "https://localhost:7094/api/Auth/AssignRole",
+                            type: "POST",
+                            contentType: "application/json",
+                            headers: { "Authorization": "Bearer " + getToken() },
+                            data: JSON.stringify({ UserName: username, RoleName: newRole }),
+                            success: function (res) {
+                                if (res.status) {
+                                    Swal.fire("Başarılı!", res.message, "success");
+                                    loadUsers();
+                                }
+                            }
+                        });
+                    }
+                });
+            });
+        });
+    </script>
+}
