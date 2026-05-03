@@ -36,6 +36,12 @@ namespace AnketPortal.UI.Controllers
         {
             return View();
         }
+
+        // Adminlerin ve SuperAdminlerin göreceði özel Dashboard sayfasý
+        public IActionResult Dashboard()
+        {
+            return View();
+        }
         public IActionResult Users() { return View(); }
     }
 }

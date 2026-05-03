@@ -114,27 +114,27 @@
                     type: "POST",
                     contentType: "application/json",
                     data: JSON.stringify({ UserName: userName, Password: password }),
-                    success: function (response) {
-                        if (response.status) {
+                    success: function (res) {
+                        if (res.status) {
+                            localStorage.setItem("token", res.data.token);
 
-                            // YENİ SİSTEM: Artık response.data bir obje. İçinden accessToken ve refreshToken'ı alıyoruz
-                            var tokenData = response.data;
+                            // TOKEN'I PARÇALA VE ROLE BAK
+                            var decodedToken = parseJwt(res.data.token);
+                            var role = decodedToken["http://schemas.microsoft.com/ws/2008/06/identity/claims/role"] || decodedToken.role || decodedToken.Role;
 
-                            localStorage.setItem("token", tokenData.accessToken);
-                            localStorage.setItem("refreshToken", tokenData.refreshToken);
-
+                            // YÖNLENDİRME (HARD SPLIT)
                             Swal.fire({
-                                icon: 'success',
-                                title: 'Giriş Başarılı',
-                                text: 'Yönlendiriliyorsunuz...',
-                                showConfirmButton: false,
-                                timer: 1500
+                                icon: 'success', title: 'Giriş Başarılı!', text: 'Yönlendiriliyorsunuz...', timer: 1500, showConfirmButton: false
                             }).then(() => {
-                                window.location.href = "/Home/Index";
+                                if(role === "Admin" || role === "SuperAdmin") {
+                                    window.location.href = "/Home/Dashboard"; // Adminleri Panele Gönder
+                                } else {
+                                    window.location.href = "/Home/Index"; // Kullanıcıları Vitrine Gönder
+                                }
                             });
                         } else {
-                            Swal.fire('Hata!', response.message, 'error');
-                            $("#btnSubmit").prop("disabled", false).html('<i class="fa-solid fa-right-to-bracket me-2"></i> Giriş Yap');
+                            Swal.fire('Hata', res.message, 'error');
+                            btn.prop("disabled", false).html('Giriş Yap');
                         }
                     },
                     error: function (xhr) {

@@ -1,0 +1,223 @@
+﻿<!DOCTYPE html>
+<html lang="tr">
+<head>
+    <meta charset="utf-8" />
+    <meta name="viewport" content="width=device-width, initial-scale=1.0" />
+    <title>@ViewData["Title"] - Anket Portalı</title>
+
+    <!-- Bootstrap 5 & FontAwesome -->
+    <link href="https://cdn.jsdelivr.net/npm/bootstrap@5.3.2/dist/css/bootstrap.min.css" rel="stylesheet">
+    <link rel="stylesheet" href="https://cdnjs.cloudflare.com/ajax/libs/font-awesome/6.4.2/css/all.min.css">
+
+    <style>
+        body {
+            background-color: #f8f9fc;
+            font-family: 'Segoe UI', Tahoma, sans-serif;
+            transition: background-color 0.3s, color 0.3s;
+        }
+
+        .topbar {
+            background: #fff;
+            height: 70px;
+            box-shadow: 0 .15rem 1.75rem 0 rgba(58,59,69,.15);
+            display: flex;
+            align-items: center;
+            padding: 0 25px;
+            justify-content: space-between;
+            z-index: 10;
+            position: sticky;
+            top: 0;
+        }
+
+        .content {
+            padding: 30px;
+            min-height: calc(100vh - 70px);
+        }
+
+        /* DARK MODE */
+        body.dark-mode {
+            background-color: #121212 !important;
+            color: #e0e0e0 !important;
+        }
+
+            body.dark-mode .topbar, body.dark-mode .card, body.dark-mode .bg-white {
+                background-color: #1f2937 !important;
+                border-color: #333 !important;
+            }
+
+            body.dark-mode .text-dark, body.dark-mode .text-gray-800 {
+                color: #e0e0e0 !important;
+            }
+
+            body.dark-mode .dropdown-menu {
+                background-color: #1f2937 !important;
+                border: 1px solid #333 !important;
+            }
+
+            body.dark-mode .dropdown-item {
+                color: #e0e0e0 !important;
+            }
+
+                body.dark-mode .dropdown-item:hover {
+                    background-color: #2c344a !important;
+                    color: #fff !important;
+                }
+
+            body.dark-mode .dropdown-header {
+                background-color: #283046 !important;
+                border-bottom: 1px solid #333;
+            }
+
+            body.dark-mode .border-bottom {
+                border-color: #333 !important;
+            }
+    </style>
+    @await RenderSectionAsync("Styles", required: false)
+</head>
+<body>
+
+    <header class="topbar">
+        <!-- SOL KISIM: LOGO VE LİNKLER -->
+        <div class="d-flex align-items-center">
+            <i class="fa-solid fa-square-poll-vertical fa-2x text-primary me-2"></i>
+            <h4 class="m-0 fw-bold text-primary me-4 d-none d-md-block">ANKET PORTALI</h4>
+            <a href="/Home/Index" class="btn btn-link text-decoration-none fw-bold text-secondary me-2"><i class="fa-solid fa-house me-1"></i> Ana Sayfa</a>
+            <a href="/Home/Surveys" class="btn btn-link text-decoration-none fw-bold text-secondary"><i class="fa-solid fa-list-check me-1"></i> Tüm Anketler</a>
+        </div>
+
+        <!-- SAĞ KISIM: PROFİL, BİLDİRİM, DARK MODE -->
+        <div class="d-flex align-items-center">
+
+            <!-- Admin bu sayfaya gelirse Paneline dönebilsin diye tuş -->
+            <a href="/Home/Dashboard" id="btnSwitchToAdmin" class="btn btn-sm btn-warning text-dark fw-bold rounded-pill shadow-sm me-3 px-3" style="display:none;">
+                <i class="fa-solid fa-gauge-high me-1"></i> Yönetim Paneli
+            </a>
+
+            <!-- BİLDİRİM ÇANI -->
+            <div class="dropdown me-3">
+                <button class="btn btn-sm btn-outline-secondary rounded-circle position-relative border-0" type="button" data-bs-toggle="dropdown">
+                    <i class="fa-solid fa-bell fs-5 text-gray-800"></i>
+                    <span class="position-absolute top-0 start-100 translate-middle badge rounded-pill bg-danger border border-light" style="font-size: 0.60rem; padding: 0.25em 0.4em; display:none;" id="notificationCount">0</span>
+                </button>
+                <ul class="dropdown-menu dropdown-menu-end shadow border-0 mt-2" style="width: 300px;">
+                    <li class="dropdown-header bg-primary text-white fw-bold py-2 rounded-top">Bildirim Merkezi</li>
+                    <div id="notificationList" style="max-height: 300px; overflow-y: auto;">
+                        <div class="text-center py-3 text-muted"><i class="fas fa-spinner fa-spin"></i> Yükleniyor...</div>
+                    </div>
+                    <li><a class="dropdown-item text-center small text-muted bg-light py-2 fw-bold" href="#" id="btnReadAll"><i class="fa-solid fa-check-double me-1"></i> Tümünü Okundu İşaretle</a></li>
+                </ul>
+            </div>
+
+            <!-- DARK MODE -->
+            <button id="btnDarkModeToggle" class="btn btn-sm btn-outline-secondary rounded-circle me-3 border-0">
+                <i class="fa-solid fa-moon fs-5 text-gray-800" id="iconTheme"></i>
+            </button>
+
+            <!-- PROFİL DROPDOWN -->
+            <div class="dropdown">
+                <a href="#" class="d-flex align-items-center text-decoration-none p-2 rounded" data-bs-toggle="dropdown" style="cursor: pointer;">
+                    <div class="text-end me-3 d-none d-md-block">
+                        <span class="d-block fw-bold text-dark" id="lblUserName">Yükleniyor...</span>
+                        <span class="badge bg-primary" id="lblUserRole">Kullanıcı</span>
+                    </div>
+                    <img class="img-profile rounded-circle shadow-sm border border-2 border-primary object-fit-cover" src="https://ui-avatars.com/api/?name=U&background=4e73df&color=fff" width="45" height="45" id="imgUserAvatar">
+                </a>
+                <ul class="dropdown-menu dropdown-menu-end shadow border-0 mt-2">
+                    <li><a class="dropdown-item py-2" href="/Home/Profile"><i class="fa-solid fa-user-gear me-2 text-primary"></i> Profil Ayarları</a></li>
+                    <li><hr class="dropdown-divider"></li>
+                    <li><a class="dropdown-item text-danger py-2" href="#" id="btnLogout"><i class="fa-solid fa-right-from-bracket me-2"></i> Çıkış Yap</a></li>
+                </ul>
+            </div>
+        </div>
+    </header>
+
+    <main class="content container-fluid">
+        @RenderBody()
+    </main>
+
+    <script src="https://code.jquery.com/jquery-3.7.1.min.js"></script>
+    <script src="https://cdn.jsdelivr.net/npm/bootstrap@5.3.2/dist/js/bootstrap.bundle.min.js"></script>
+    <script src="https://cdn.jsdelivr.net/npm/sweetalert2@11"></script>
+
+    <script>
+        // Dark Mode
+        var isDark = localStorage.getItem("theme") === "dark";
+        if (isDark) { $("body").addClass("dark-mode"); $("#iconTheme").removeClass("fa-moon").addClass("fa-sun text-warning"); }
+
+        $("#btnDarkModeToggle").click(function (e) {
+            e.preventDefault(); $("body").toggleClass("dark-mode");
+            if ($("body").hasClass("dark-mode")) { localStorage.setItem("theme", "dark"); $("#iconTheme").removeClass("fa-moon").addClass("fa-sun text-warning"); }
+            else { localStorage.setItem("theme", "light"); $("#iconTheme").removeClass("fa-sun text-warning").addClass("fa-moon"); }
+        });
+
+        function parseJwt(token) {
+            try { return JSON.parse(decodeURIComponent(window.atob(token.split('.')[1].replace(/-/g, '+').replace(/_/g, '/')).split('').map(function(c) { return '%' + ('00' + c.charCodeAt(0).toString(16)).slice(-2); }).join(''))); } catch (e) { return null; }
+        }
+
+        $(document).ready(function () {
+            var token = localStorage.getItem("token");
+            if (!token) { window.location.href = "/Auth/Login"; return; }
+
+            var decodedToken = parseJwt(token);
+            if(decodedToken) {
+                var userRole = decodedToken["http://schemas.microsoft.com/ws/2008/06/identity/claims/role"] || decodedToken.role || decodedToken.Role || "User";
+                $("#lblUserRole").text(userRole);
+
+                // Adminse panele dönüş butonunu göster
+                if(userRole === "Admin" || userRole === "SuperAdmin") {
+                    $("#lblUserRole").removeClass("bg-primary").addClass("bg-danger");
+                    $("#btnSwitchToAdmin").show();
+                }
+
+                var tempName = decodedToken.unique_name || "Kullanıcı";
+                $("#lblUserName").text(tempName.toUpperCase());
+                $("#imgUserAvatar").attr("src", "https://ui-avatars.com/api/?name=" + tempName.charAt(0).toUpperCase() + "&background=4e73df&color=fff&bold=true");
+
+                // Profil Çekme
+                $.ajax({
+                    url: "https://localhost:7094/api/Auth/GetProfile", type: "GET", headers: { "Authorization": "Bearer " + token },
+                    success: function(res) {
+                        if (res.status && res.data) {
+                            if(res.data.userName) $("#lblUserName").text(res.data.userName.toUpperCase());
+                            if(res.data.profilePhoto && res.data.profilePhoto.length > 50) $("#imgUserAvatar").attr("src", res.data.profilePhoto);
+                            else $("#imgUserAvatar").attr("src", "https://ui-avatars.com/api/?name=" + (res.data.userName || "U").charAt(0).toUpperCase() + "&background=4e73df&color=fff&bold=true");
+                        }
+                    },
+                    error: function(xhr) { if(xhr.status === 401) { localStorage.removeItem("token"); window.location.href = "/Auth/Login"; } }
+                });
+
+                // Bildirimleri Çekme
+                $.ajax({
+                    url: "https://localhost:7094/api/Survey/GetNotifications", type: "GET", headers: { "Authorization": "Bearer " + token },
+                    success: function(res) {
+                        if (res.status && res.data) {
+                            var notifs = res.data;
+                            var readCount = parseInt(localStorage.getItem("readNotifCount")) || 0;
+                            var unreadCount = notifs.length - readCount;
+
+                            if (unreadCount > 0) $("#notificationCount").text(unreadCount).show(); else $("#notificationCount").hide();
+
+                            var html = "";
+                            if(notifs.length === 0) html = '<li><span class="dropdown-item text-center text-muted py-3">Yeni bildiriminiz yok.</span></li>';
+                            else notifs.forEach(function(n) { html += `<li><a class="dropdown-item d-flex align-items-center py-3 border-bottom" href="#"><div class="me-3"><div class="${n.color} rounded-circle d-flex align-items-center justify-content-center text-white" style="width: 40px; height: 40px;"><i class="fa-solid ${n.icon}"></i></div></div><div><div class="small text-muted">${n.time}</div><span class="text-dark text-wrap fw-bold" style="font-size: 0.85rem;">${n.message}</span></div></a></li>`; });
+
+                            $("#notificationList").html(html);
+
+                            $("#btnReadAll").click(function(e) {
+                                e.preventDefault(); localStorage.setItem("readNotifCount", notifs.length); $("#notificationCount").fadeOut();
+                            });
+                        }
+                    }
+                });
+            }
+
+            $("#btnLogout").click(function(e) {
+                e.preventDefault();
+                Swal.fire({ title: 'Çıkış Yapılıyor', text: "Emin misiniz?", icon: 'warning', showCancelButton: true, confirmButtonText: 'Evet', cancelButtonText: 'İptal'
+                }).then((result) => { if (result.isConfirmed) { localStorage.clear(); window.location.href = "/Auth/Login"; } });
+            });
+        });
+    </script>
+    @await RenderSectionAsync("Scripts", required: false)
+</body>
+</html>
