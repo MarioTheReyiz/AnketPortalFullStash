@@ -1,4 +1,6 @@
-﻿using AnketPortal.Data; // Kendi AppDbContext'inin olduğu namespace'i kontrol et
+﻿using AnketPortal.API.Data;   // AppDbContext burada!
+using AnketPortal.API.Models; // Modellerin (Survey vb.) burada!
+using Microsoft.EntityFrameworkCore;
 using Microsoft.Extensions.DependencyInjection;
 using Microsoft.Extensions.Hosting;
 using System;
@@ -33,7 +35,7 @@ namespace AnketPortal.Services
                     // 2. Bitiş tarihi (EndDate) var mı?
                     // 3. Bitiş tarihi şu anki zamandan (DateTime.Now) daha mı eski?
                     var expiredSurveys = dbContext.Surveys
-                        .Where(s => s.IsActive == true && s.EndDate.HasValue && s.EndDate < DateTime.Now)
+                        .Where(s => s.IsActive == true && s.EndDate != DateTime.MinValue && s.EndDate < DateTime.Now)
                         .ToList();
 
                     // Eğer süresi geçen anket bulduysa
@@ -47,13 +49,12 @@ namespace AnketPortal.Services
                         // Değişiklikleri veritabanına kaydet
                         await dbContext.SaveChangesAsync(stoppingToken);
 
-                        // İstersen buraya bir log atabilirsin: Console.WriteLine($"{expiredSurveys.Count} adet anket pasife alındı.");
+                        // Konsolda görmek istersen:
+                        Console.WriteLine($"{expiredSurveys.Count} adet anket pasife alındı.");
                     }
                 }
 
-                // BEKLEME SÜRESİ:
-                // Şimdilik test edebilmen için her 10 saniyede bir kontrol edecek şekilde ayarladım.
-                // Projeyi canlıya alırken bunu TimeSpan.FromHours(1) yaparak saatte 1 çalışmasını sağlayabilirsin.
+                // BEKLEME SÜRESİ: 10 Saniyede bir kontrol et
                 await Task.Delay(TimeSpan.FromSeconds(10), stoppingToken);
             }
         }
