@@ -53,7 +53,12 @@ builder.Services.AddAuthentication(options =>
 // --- 4. Baðýmlýlýk Enjeksiyonlarý (DI) ---
 builder.Services.AddScoped(typeof(IGenericRepository<>), typeof(GenericRepository<>));
 builder.Services.AddScoped<ITokenService, TokenService>();
-builder.Services.AddControllers();
+// Program.cs içerisine eklenecek olan kýsým:
+builder.Services.AddControllers().AddJsonOptions(x =>
+{
+    // JSON Döngü Hatasýný Engeller (Reference Looping)
+    x.JsonSerializerOptions.ReferenceHandler = System.Text.Json.Serialization.ReferenceHandler.IgnoreCycles;
+});
 
 // --- 5. CORS AYARLARI (ÖNEMLÝ: Politika burada tanýmlanýr) ---
 builder.Services.AddCors(options =>
