@@ -107,6 +107,11 @@ builder.Services.AddSwaggerGen(options =>
 // =================================================================
 // PÝPELINE (MÝDDLEWARE) SIRALAMASI - BURASI ÇOK ÖNEMLÝ
 // =================================================================
+
+// Arka plan servisimizi sisteme kaydediyoruz
+builder.Services.AddHostedService<AnketPortal.Services.SurveyStatusUpdateService>();
+
+
 var app = builder.Build();
 
 if (app.Environment.IsDevelopment())
