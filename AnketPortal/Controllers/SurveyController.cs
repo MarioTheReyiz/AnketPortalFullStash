@@ -6,6 +6,10 @@ using Microsoft.AspNetCore.Authorization;
 using Microsoft.AspNetCore.Mvc;
 using System.Security.Claims;
 using Microsoft.EntityFrameworkCore;
+using System;
+using System.Linq;
+using System.Threading.Tasks;
+using System.Collections.Generic;
 
 namespace AnketPortal.API.Controllers
 {
@@ -16,11 +20,8 @@ namespace AnketPortal.API.Controllers
         private readonly IGenericRepository<Survey> _surveyRepo;
         private readonly IGenericRepository<Question> _questionRepo;
         private readonly IGenericRepository<QuestionOption> _optionRepo;
-
-        // 1. AppDbContext tanımlandı
         private readonly AppDbContext _context;
 
-        // 2. AppDbContext Constructor'a eklendi
         public SurveyController(
             IGenericRepository<Survey> surveyRepo,
             IGenericRepository<Question> questionRepo,
@@ -30,7 +31,7 @@ namespace AnketPortal.API.Controllers
             _surveyRepo = surveyRepo;
             _questionRepo = questionRepo;
             _optionRepo = optionRepo;
-            _context = context; // Ataması yapıldı
+            _context = context;
         }
 
         // Aktif Anketleri Listeleme ve Arama 
@@ -124,11 +125,11 @@ namespace AnketPortal.API.Controllers
             _surveyRepo.Update(survey);
             var log = new SystemLog
             {
-                Action = "Yeni Anket",
+                Action = "Anket Güncellendi",
                 Message = $"'{survey.Title}' adlı anket güncellendi.",
                 Username = User.Identity?.Name ?? "Sistem",
-                Color = "bg-success",
-                Icon = "fa-plus-circle",
+                Color = "bg-info",
+                Icon = "fa-edit",
                 CreatedDate = DateTime.Now
             };
             _context.SystemLogs.Add(log);
@@ -194,44 +195,6 @@ namespace AnketPortal.API.Controllers
             return Ok(new ResultDto { Status = true, Message = "Şık başarıyla eklendi." });
         }
 
-        // Anket Sonuçları (CANLANDIRILDI!)
-        [Authorize(Roles = "Admin,SuperAdmin")]
-        [HttpGet("{id}/Results")]
-        public async Task<IActionResult> GetSurveyResults(int id)
-        {
-            var survey = await _surveyRepo.AsQueryable()
-                .Include(s => s.Questions)
-                    .ThenInclude(q => q.Options)
-                .FirstOrDefaultAsync(s => s.Id == id);
-
-            if (survey == null)
-                return NotFound(new ResultDto { Status = false, Message = "Anket bulunamadı." });
-
-            // HATANIN ÇÖZÜMÜ BURADA:
-            // a.OptionId yerine Entity Framework'ün ilişkisel tablolarda standart olarak 
-            // kullandığı a.QuestionOptionId alanını kullandım. 
-            var results = survey.Questions.Select(q => new
-            {
-                QuestionId = q.Id,
-                QuestionText = q.Text,
-                Options = q.Options.Select(o => new
-                {
-                    OptionId = o.Id,
-                    OptionText = o.OptionText,
-                    // Değiştirilen satır:
-                    AnswerCount = _context.SurveyAnswers.Count(a => a.SelectedOptionId == o.Id)
-                }).ToList()
-            }).ToList();
-
-            var data = new
-            {
-                SurveyTitle = survey.Title,
-                Results = results
-            };
-
-            return Ok(new ResultDto { Status = true, Data = data });
-        }
-
         // Anket Silme (Soft Delete)
         [Authorize(Roles = "Admin,SuperAdmin")]
         [HttpDelete("{id}")]
@@ -244,11 +207,11 @@ namespace AnketPortal.API.Controllers
             _surveyRepo.Update(survey);
             var log = new SystemLog
             {
-                Action = "Yeni Anket",
-                Message = $"'{survey.Title}' adlı anket silindi.",
+                Action = "Anket Silindi",
+                Message = $"'{survey.Title}' adlı anket silindi (pasife alındı).",
                 Username = User.Identity?.Name ?? "Sistem",
-                Color = "bg-success",
-                Icon = "fa-plus-circle",
+                Color = "bg-danger",
+                Icon = "fa-trash",
                 CreatedDate = DateTime.Now
             };
             _context.SystemLogs.Add(log);
@@ -291,14 +254,14 @@ namespace AnketPortal.API.Controllers
 
             return Ok(new ResultDto { Status = true, Data = stats });
         }
-        // --- YENİ: DİNAMİK BİLDİRİMLER (Sistemdeki verilere göre otomatik üretilir) ---
+
+        // DİNAMİK BİLDİRİMLER
         [Authorize]
         [HttpGet("GetNotifications")]
         public async Task<IActionResult> GetNotifications()
         {
             var notifications = new List<object>();
 
-            // 1. Son Eklenen Anket (Eğer varsa)
             var lastSurvey = await _context.Surveys.OrderByDescending(s => s.Id).FirstOrDefaultAsync();
             if (lastSurvey != null)
             {
@@ -311,7 +274,6 @@ namespace AnketPortal.API.Controllers
                 });
             }
 
-            // 2. Pasif Anket Uyarısı
             var passiveCount = await _context.Surveys.CountAsync(s => !s.IsActive);
             if (passiveCount > 0)
             {
@@ -324,7 +286,6 @@ namespace AnketPortal.API.Controllers
                 });
             }
 
-            // 3. Yanıt / Etkileşim Bilgisi
             var totalAnswers = await _context.SurveyAnswers.CountAsync();
             if (totalAnswers > 0)
             {
@@ -339,27 +300,53 @@ namespace AnketPortal.API.Controllers
 
             return Ok(new ResultDto { Status = true, Data = notifications });
         }
+        // ANKET SONUÇLARINI / İSTATİSTİKLERİNİ GETİREN METOT
         [Authorize(Roles = "Admin,SuperAdmin")]
-        [HttpGet("GetSystemLogs")]
-        public async Task<IActionResult> GetSystemLogs()
+        [HttpGet("{id}/Results")]
+        public async Task<IActionResult> GetSurveyResults(int id)
         {
-            // En son eklenen 50 logu getir
-            var logs = await _context.SystemLogs
-                .OrderByDescending(l => l.CreatedDate)
-                .Take(50)
-                .Select(l => new
-                {
-                    l.Id,
-                    l.Action,
-                    l.Message,
-                    l.Username,
-                    l.Color,
-                    l.Icon,
-                    Time = l.CreatedDate.ToString("dd.MM.yyyy HH:mm")
-                })
+            // 1. Anketi soruları ve şıklarıyla beraber çek
+            var survey = await _surveyRepo.AsQueryable()
+                .Include(s => s.Questions)
+                    .ThenInclude(q => q.Options)
+                .FirstOrDefaultAsync(s => s.Id == id);
+
+            if (survey == null)
+                return NotFound(new ResultDto { Status = false, Message = "Anket bulunamadı." });
+
+            // 2. Anketin sorularının ID'lerini bir listeye al
+            var questionIds = survey.Questions.Select(q => q.Id).ToList();
+
+            // 3. Bu sorulara verilmiş TÜM CEVAPLARI direkt DbContext üzerinden çek
+            // (Senin modelinde SurveyId olmadığı için, bu anketin sorularına verilen cevapları arıyoruz)
+            var allAnswers = await _context.SurveyAnswers
+                .Where(a => questionIds.Contains(a.QuestionId))
                 .ToListAsync();
 
-            return Ok(new ResultDto { Status = true, Data = logs });
+            // 4. Frontend'in (Chart.js) beklediği formatta veriyi hazırla
+            var resultData = new
+            {
+                Id = survey.Id,
+                Title = survey.Title,
+                Description = survey.Description,
+                Questions = survey.Questions.Select(q => new
+                {
+                    Id = q.Id,
+                    QuestionText = q.Text,
+                    Type = q.Type,
+                    Options = q.Options.Select(o => new
+                    {
+                        Id = o.Id,
+                        OptionText = o.OptionText, // Senin modelindeki isimle eşleştirildi!
+
+                        // O şıkka ait cevap sayısını allAnswers listesinden hesapla
+                        // (Cevap modelindeki alanın adı SelectedOptionId olduğu için onu kullandık)
+                        Count = allAnswers.Count(a => a.QuestionId == q.Id && a.SelectedOptionId == o.Id)
+                    }).ToList()
+                }).ToList()
+            };
+
+            return Ok(new ResultDto { Status = true, Data = resultData });
         }
     }
 }
