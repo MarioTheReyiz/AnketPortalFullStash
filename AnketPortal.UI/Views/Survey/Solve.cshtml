@@ -1,0 +1,305 @@
+﻿@{
+    ViewData["Title"] = "Anketi Çöz";
+    // Vitrin olduğu için User Layout kullanıyoruz
+    Layout = "~/Views/Shared/_UserLayout.cshtml";
+}
+
+<div class="container mt-4 mb-5">
+    <div class="row justify-content-center">
+        <div class="col-lg-8 col-md-10">
+
+            <!-- Yükleniyor Göstergesi -->
+            <div id="loadingDiv" class="text-center py-5">
+                <i class="fas fa-spinner fa-spin fa-3x text-primary mb-3"></i>
+                <h5 class="text-muted">Anket Yükleniyor...</h5>
+            </div>
+
+            <!-- Anket Ana Kartı (Gizli Başlar) -->
+            <div id="surveyCard" class="card shadow border-0 rounded-4 overflow-hidden" style="display:none;">
+
+                <!-- Anket Başlık ve Açıklama -->
+                <div class="card-header bg-primary text-white p-4 p-md-5 border-0 position-relative">
+                    <h2 class="fw-bold mb-3" id="lblSurveyTitle">Yükleniyor...</h2>
+                    <p class="fs-6 mb-0 opacity-75" id="lblSurveyDesc">Açıklama yükleniyor...</p>
+                    <i class="fa-solid fa-clipboard-question position-absolute text-white opacity-25" style="font-size: 8rem; right: -20px; bottom: -20px;"></i>
+                </div>
+
+                <!-- Sorular ve Form -->
+                <div class="card-body p-4 p-md-5 bg-light">
+                    <form id="frmSolveSurvey">
+
+                        <!-- Sorular buraya JS ile dinamik eklenecek -->
+                        <div id="questionsContainer"></div>
+
+                        <hr class="my-5 opacity-25">
+
+                        <!-- Gönder Butonu -->
+                        <div class="text-end">
+                            <button type="button" id="btnSubmitAnswers" class="btn btn-primary btn-lg rounded-pill px-5 fw-bold shadow">
+                                <i class="fa-solid fa-paper-plane me-2"></i> Cevapları Gönder
+                            </button>
+                        </div>
+                    </form>
+                </div>
+            </div>
+
+        </div>
+    </div>
+</div>
+
+@section Scripts {
+    <script>
+        $(document).ready(function () {
+            // ViewBag'den C#'ın yolladığı Anket ID'sini alıyoruz (ÇÖKMEYE KARŞI GÜVENLİ YÖNTEM!)
+            var surveyId = '@(ViewBag.SurveyId ?? 0)';
+            var token = localStorage.getItem("token");
+
+            if (!token) {
+                window.location.replace("/Auth/Login");
+                return;
+            }
+
+            if (surveyId == '0' || surveyId == '') {
+                Swal.fire('Hata', 'Geçersiz anket numarası. Linki kontrol ediniz.', 'error').then(() => {
+                    window.location.replace("/Home/Surveys");
+                });
+                return;
+            }
+
+            // 1. ANKETİ VE SORULARI API'DEN ÇEK
+            $.ajax({
+                url: "https://localhost:7094/api/Survey/" + surveyId, // PORTU DOĞRU YAZDIĞINDAN EMİN OL (Genelde 7094'tür)
+                type: "GET",
+                headers: { "Authorization": "Bearer " + token },
+                success: function (res) {
+                    $("#loadingDiv").hide();
+
+                    // API'den gelen veriyi güvene alalım (API bazen direkt nesne, bazen res.data içinde döner)
+                    var survey = null;
+                    if (res && res.data && res.data.title) {
+                        survey = res.data;
+                    } else if (res && res.title) {
+                        survey = res;
+                    }
+
+                    if (!survey) {
+                        Swal.fire('Hata', 'Anket verisi sunucudan okunamadı.', 'error').then(() => {
+                            window.location.replace("/Home/Surveys");
+                        });
+                        return;
+                    }
+
+                    // Aktiflik Kontrolü
+                    if (survey.isActive === false) {
+                        Swal.fire('Erişim Reddedildi', 'Bu anket katılıma kapatılmıştır.', 'warning').then(() => {
+                            window.location.replace("/Home/Surveys");
+                        });
+                        return;
+                    }
+
+                    // Başlık ve Açıklamayı Yazdır
+                    $("#lblSurveyTitle").text(survey.title);
+                    $("#lblSurveyDesc").text(survey.description || "Bu anket için açıklama girilmemiştir.");
+
+                    // Soruları Çizdir
+                    renderQuestions(survey.questions);
+
+                    $("#surveyCard").fadeIn(); // Formu göster
+                },
+                error: function (xhr) {
+                    console.error("TAM HATA DETAYI:", xhr);
+
+                    var errorMsg = "Anket bilgileri alınırken sunucu hatası oluştu. (Hata Kodu: " + xhr.status + ")";
+
+                    if(xhr.responseJSON && xhr.responseJSON.message) {
+                        errorMsg = xhr.responseJSON.message;
+                    } else if (xhr.responseJSON && xhr.responseJSON.Message) {
+                        errorMsg = xhr.responseJSON.Message;
+                    } else if (xhr.status === 404) {
+                        errorMsg = "Anket API'de bulunamadı (404 Not Found). Lütfen URL'yi kontrol edin.";
+                    } else if (xhr.status === 403 || xhr.status === 401) {
+                        errorMsg = "Bu anketi görüntüleme yetkiniz yok veya oturumunuz düşmüş olabilir.";
+                    } else if (xhr.status === 500) {
+                        errorMsg = "Sunucu Çöktü (500 Internal Error). API tarafında (Soruları çekerken JSON Döngü hatası olabilir).";
+                    }
+
+                    Swal.fire('Kritik Hata!', errorMsg, 'error').then(() => {
+                        window.location.replace("/Home/Surveys");
+                    });
+                }
+            });
+
+            // 2. SORULARI EKRANA DİNAMİK OLARAK ÇİZEN FONKSİYON
+            function renderQuestions(questions) {
+                var container = $("#questionsContainer");
+                container.empty();
+
+                if (!questions || questions.length === 0) {
+                    container.html('<div class="alert alert-warning text-center">Bu ankete henüz soru eklenmemiş.</div>');
+                    $("#btnSubmitAnswers").hide(); // Soru yoksa butonu gizle
+                    return;
+                }
+
+                // Her soru için bir blok oluştur
+                questions.forEach(function (q, index) {
+                    var questionHtml = `
+                        <div class="question-block bg-white p-4 rounded-4 shadow-sm mb-4 border border-1" data-question-id="${q.id}" data-question-type="${q.type}">
+                            <h5 class="fw-bold text-dark mb-4">
+                                <span class="badge bg-primary me-2 rounded-circle">${index + 1}</span> ${q.text}
+                            </h5>
+                            <div class="options-container ps-2 ps-md-4">
+                    `;
+
+                    if (!q.options || q.options.length === 0) {
+                        questionHtml += `<span class="text-danger small"><i class="fa-solid fa-triangle-exclamation"></i> Bu soru için seçenek bulunamadı.</span>`;
+                    } else {
+                        // Seçenekleri oluştur (Tipe göre Radio veya Checkbox)
+                        q.options.forEach(function (opt) {
+
+                            // Type 1 = Tek Seçmeli (Radio)
+                            if (q.type === 1) {
+                                questionHtml += `
+                                    <div class="form-check custom-radio mb-3">
+                                        <input class="form-check-input option-input" type="radio" name="q_${q.id}" id="opt_${opt.id}" value="${opt.id}">
+                                        <label class="form-check-label w-100 p-2 rounded" for="opt_${opt.id}" style="cursor:pointer;">
+                                            ${opt.text}
+                                        </label>
+                                    </div>
+                                `;
+                            }
+                            // Type 2 = Çok Seçmeli (Checkbox)
+                            else if (q.type === 2) {
+                                questionHtml += `
+                                    <div class="form-check custom-checkbox mb-3">
+                                        <input class="form-check-input option-input" type="checkbox" name="q_${q.id}" id="opt_${opt.id}" value="${opt.id}">
+                                        <label class="form-check-label w-100 p-2 rounded" for="opt_${opt.id}" style="cursor:pointer;">
+                                            ${opt.text}
+                                        </label>
+                                    </div>
+                                `;
+                            }
+                        });
+                    }
+
+                    questionHtml += `</div></div>`;
+                    container.append(questionHtml);
+                });
+
+                // Tıklanan seçeneğe arkaplan rengi vermek için ufak bir UX dokunuşu
+                $(".option-input").change(function() {
+                    var qName = $(this).attr("name");
+                    // O soruya ait tüm labellerin arkaplanını sıfırla
+                    $(`input[name='${qName}']`).siblings('label').removeClass('bg-primary bg-opacity-10 text-primary fw-bold');
+
+                    // Seçili olanlara arkaplan ekle
+                    $(`input[name='${qName}']:checked`).siblings('label').addClass('bg-primary bg-opacity-10 text-primary fw-bold');
+                });
+            }
+
+            // 3. CEVAPLARI GÖNDERME İŞLEMİ
+            $("#btnSubmitAnswers").click(function () {
+                var btn = $(this);
+                var answers = [];
+                var unAnsweredCount = 0;
+
+                // Ekrandaki her soru bloğunu dön
+                $(".question-block").each(function () {
+                    var qId = $(this).data("question-id");
+
+                    // Bu soru için seçilmiş (checked) olan inputları bul
+                    var selectedOptions = $(this).find("input.option-input:checked");
+
+                    if (selectedOptions.length === 0) {
+                        unAnsweredCount++; // Cevaplanmamış soru var
+                        // Sorunun etrafını kızartarak uyar
+                        $(this).addClass("border-danger").removeClass("border-1");
+                    } else {
+                        // Soru cevaplanmışsa kırmızı kenarlığı kaldır
+                        $(this).removeClass("border-danger").addClass("border-1");
+
+                        // Seçilen her option ID'sini listeye ekle
+                        selectedOptions.each(function () {
+                            answers.push({
+                                questionId: qId,
+                                optionId: parseInt($(this).val())
+                            });
+                        });
+                    }
+                });
+
+                // Boş soru kontrolü
+                if (unAnsweredCount > 0) {
+                    Swal.fire('Eksik Cevap', `Lütfen tüm soruları cevaplayın. Kırmızı ile işaretlenmiş ${unAnsweredCount} soru boş bırakıldı.`, 'warning');
+                    return;
+                }
+
+                // DİKKAT: Backend'in beklediği format
+                var payload = {
+                    surveyId: surveyId,
+                    answers: answers
+                };
+
+                // Gönderim başlasın
+                btn.prop("disabled", true).html('<i class="fas fa-spinner fa-spin me-2"></i> Gönderiliyor...');
+
+                $.ajax({
+                    url: "https://localhost:7094/api/Answer/Submit", // Backend portunu kontrol et
+                    type: "POST",
+                    contentType: "application/json",
+                    headers: { "Authorization": "Bearer " + token },
+                    data: JSON.stringify(payload),
+                    success: function (res) {
+                        if (res && (res.status === true || res.Status === true)) {
+                            Swal.fire({
+                                icon: 'success',
+                                title: 'Teşekkürler!',
+                                text: 'Anket cevaplarınız başarıyla kaydedildi.',
+                                confirmButtonText: 'Anasayfaya Dön'
+                            }).then(() => {
+                                window.location.replace("/Home/Index");
+                            });
+                        } else {
+                            Swal.fire('Hata', res.message || res.Message || 'Cevaplar kaydedilemedi.', 'error');
+                            btn.prop("disabled", false).html('<i class="fa-solid fa-paper-plane me-2"></i> Cevapları Gönder');
+                        }
+                    },
+                    error: function (xhr) {
+                        console.error("Hata:", xhr);
+                        var errMsg = 'Sunucuyla iletişim kurulamadı.';
+                        if(xhr.responseJSON && xhr.responseJSON.message) errMsg = xhr.responseJSON.message;
+                        else if(xhr.responseJSON && xhr.responseJSON.Message) errMsg = xhr.responseJSON.Message;
+
+                        Swal.fire('Hata!', errMsg, 'error');
+                        btn.prop("disabled", false).html('<i class="fa-solid fa-paper-plane me-2"></i> Cevapları Gönder');
+                    }
+                });
+            });
+        });
+    </script>
+    <style>
+        /* Form elemanlarının boyutunu büyütüp tıklanabilirliğini artırıyoruz */
+        .custom-radio input[type="radio"], .custom-checkbox input[type="checkbox"] {
+            width: 1.5em;
+            height: 1.5em;
+            margin-top: 0.25em;
+            cursor: pointer;
+        }
+
+        .custom-radio label, .custom-checkbox label {
+            transition: all 0.2s ease;
+        }
+
+        .border-danger {
+            border-width: 2px !important;
+        }
+
+        body.dark-mode .bg-white {
+            background-color: #1f2937 !important;
+            border-color: #333 !important;
+        }
+
+        body.dark-mode .bg-light {
+            background-color: #121212 !important;
+        }
+    </style>
+}

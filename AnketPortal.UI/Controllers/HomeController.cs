@@ -42,6 +42,11 @@ namespace AnketPortal.UI.Controllers
         {
             return View();
         }
+        // Kullanýcýlarýn tüm anketleri görebileceði sayfa
+        public IActionResult Surveys()
+        {
+            return View();
+        }
         public IActionResult Users() { return View(); }
     }
 }

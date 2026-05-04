@@ -1,0 +1,148 @@
+﻿@{
+    ViewData["Title"] = "Tüm Anketler";
+    // Bu sayfa User Side (Vitrin) olduğu için _UserLayout kullanıyoruz!
+    Layout = "~/Views/Shared/_UserLayout.cshtml";
+}
+
+<div class="container mt-4">
+    <!-- Sayfa Başlığı ve Arama Çubuğu -->
+    <div class="row mb-4 align-items-center">
+        <div class="col-md-6 mb-3 mb-md-0">
+            <h2 class="fw-bold text-gray-800"><i class="fa-solid fa-layer-group text-primary me-2"></i>Tüm Anketler</h2>
+            <p class="text-muted mb-0">Sistemdeki tüm aktif anketleri buradan inceleyebilirsin.</p>
+        </div>
+        <div class="col-md-6">
+            <div class="input-group shadow-sm rounded-pill overflow-hidden bg-white">
+                <span class="input-group-text bg-white border-0 ps-4 text-muted"><i class="fa-solid fa-magnifying-glass"></i></span>
+                <input type="text" id="txtSearch" class="form-control border-0 p-3 shadow-none" placeholder="Anket adında ara...">
+            </div>
+        </div>
+    </div>
+
+    <!-- Anketlerin Listeleneceği Konteyner -->
+    <div class="row" id="allSurveysContainer">
+        <!-- Yükleniyor animasyonu -->
+        <div class="col-12 text-center py-5" id="loadingDiv">
+            <i class="fas fa-spinner fa-spin fa-3x text-primary mb-3"></i>
+            <h5 class="text-muted">Anketler Listeleniyor...</h5>
+        </div>
+    </div>
+</div>
+
+@section Scripts {
+    <script>
+        $(document).ready(function () {
+            var token = localStorage.getItem("token");
+            if (!token) { window.location.replace("/Auth/Login"); return; }
+
+            var allActiveSurveys = []; // Arama yapmak için anketleri hafızada tutacağız
+
+            // API'den Anketleri Çek
+            $.ajax({
+                url: "https://localhost:7094/api/Survey", // Kendi portuna göre düzelt!
+                type: "GET",
+                headers: { "Authorization": "Bearer " + token },
+                success: function (res) {
+                    $("#loadingDiv").remove();
+
+                    if (!res || res.length === 0) {
+                        $("#allSurveysContainer").html('<div class="col-12 text-center py-5"><i class="fa-solid fa-box-open fa-4x text-muted mb-3 d-block"></i><h5 class="text-muted">Sistemde henüz anket bulunmuyor.</h5></div>');
+                        return;
+                    }
+
+                    // SADECE AKTİF ANKETLERİ FİLTRELE (User Side)
+                    allActiveSurveys = res.filter(s => s.isActive === true);
+
+                    if (allActiveSurveys.length === 0) {
+                        $("#allSurveysContainer").html('<div class="col-12 text-center py-5"><i class="fa-solid fa-lock fa-4x text-muted mb-3 d-block opacity-50"></i><h5 class="text-muted mt-3">Şu an aktif bir anket bulunmuyor.</h5></div>');
+                        return;
+                    }
+
+                    // Ekrana Çizdir
+                    renderSurveys(allActiveSurveys);
+                },
+                error: function (xhr) {
+                    if(xhr.status === 401) { window.location.replace("/Auth/Login"); }
+                }
+            });
+
+            // Kartları Ekrana Çizdiren Fonksiyon
+            function renderSurveys(data) {
+                var container = $("#allSurveysContainer");
+                container.empty();
+
+                if(data.length === 0) {
+                    container.html('<div class="col-12 text-center py-5"><h5 class="text-muted">Aramanıza uygun anket bulunamadı.</h5></div>');
+                    return;
+                }
+
+                data.forEach(function (s) {
+                    var desc = s.description ? s.description : "Bu anket için açıklama girilmemiş.";
+                    var date = new Date(s.createdDate).toLocaleDateString("tr-TR");
+                    var endDateStr = s.endDate ? new Date(s.endDate).toLocaleDateString("tr-TR") : "Süresiz";
+
+                    var cardHtml = `
+                        <div class="col-xl-4 col-md-6 mb-4 survey-item">
+                            <div class="card h-100 shadow-sm border-0 rounded-4 hover-lift">
+                                <div class="card-header bg-white border-bottom-0 pt-4 pb-0">
+                                    <h5 class="fw-bold text-dark text-truncate" title="${s.title}">${s.title}</h5>
+                                    <span class="badge bg-success bg-opacity-10 text-success rounded-pill px-3 py-2 mt-2"><i class="fa-solid fa-circle-check me-1"></i> Yayında</span>
+                                </div>
+                                <div class="card-body d-flex flex-column">
+                                    <p class="text-muted small mb-4 flex-grow-1">${desc}</p>
+                                    <div class="bg-light p-3 rounded-3 mb-3">
+                                        <div class="d-flex justify-content-between align-items-center mb-2 small">
+                                            <span class="text-muted"><i class="fa-regular fa-calendar me-1"></i> Oluşturulma:</span>
+                                            <span class="fw-bold text-dark">${date}</span>
+                                        </div>
+                                        <div class="d-flex justify-content-between align-items-center small">
+                                            <span class="text-muted"><i class="fa-regular fa-clock me-1"></i> Son Katılım:</span>
+                                            <span class="fw-bold text-danger">${endDateStr}</span>
+                                        </div>
+                                    </div>
+                                    <a href="/Survey/Solve/${s.id}" class="btn btn-primary w-100 fw-bold rounded-pill p-3">
+                                        Ankete Git <i class="fa-solid fa-arrow-right ms-2"></i>
+                                    </a>
+                                </div>
+                            </div>
+                        </div>
+                    `;
+                    container.append(cardHtml);
+                });
+            }
+
+            // Anlık Arama (Filtreleme) İşlemi
+            $("#txtSearch").on("keyup", function() {
+                var value = $(this).val().toLowerCase();
+                // İsmin içinde arama yap
+                var filtered = allActiveSurveys.filter(function(survey) {
+                    return survey.title.toLowerCase().indexOf(value) > -1;
+                });
+                renderSurveys(filtered);
+            });
+        });
+    </script>
+
+    <style>
+        .hover-lift {
+            transition: transform 0.2s ease, box-shadow 0.2s ease;
+        }
+
+            .hover-lift:hover {
+                transform: translateY(-5px);
+                box-shadow: 0 10px 25px rgba(0,0,0,0.1) !important;
+            }
+
+        body.dark-mode .hover-lift:hover {
+            box-shadow: 0 10px 25px rgba(0,0,0,0.5) !important;
+        }
+
+        body.dark-mode .bg-light {
+            background-color: #2c344a !important;
+        }
+
+        body.dark-mode .text-dark {
+            color: #f8f9fc !important;
+        }
+    </style>
+}
