@@ -5,6 +5,9 @@ using Microsoft.AspNetCore.Authorization;
 using Microsoft.AspNetCore.Mvc;
 using System.Security.Claims;
 using Microsoft.EntityFrameworkCore;
+using System;
+using System.Linq;
+using System.Threading.Tasks;
 
 namespace AnketPortal.API.Controllers
 {
@@ -27,13 +30,11 @@ namespace AnketPortal.API.Controllers
         {
             var userId = User.FindFirstValue(ClaimTypes.NameIdentifier);
 
-            
             if (model.Answers == null || !model.Answers.Any())
             {
                 return BadRequest(new ResultDto { Status = false, Message = "Lütfen en az bir soruya cevap verin." });
             }
 
-            
             var survey = await _surveyRepo.GetByIdAsync(model.SurveyId);
 
             if (survey == null || !survey.IsActive)
@@ -42,7 +43,6 @@ namespace AnketPortal.API.Controllers
             if (survey.EndDate < DateTime.Now)
                 return BadRequest(new ResultDto { Status = false, Message = "Bu anketin katılım süresi dolmuştur, cevap gönderemezsiniz." });
 
-            
             bool hasAnswered = await _answerRepo.AsQueryable()
                 .AnyAsync(a => a.AppUserId == userId && a.Question.SurveyId == model.SurveyId);
 
@@ -51,15 +51,16 @@ namespace AnketPortal.API.Controllers
                 return BadRequest(new ResultDto { Status = false, Message = "Bu anketi zaten cevapladınız. Bir ankete sadece bir kez katılabilirsiniz." });
             }
 
-            
             foreach (var item in model.Answers)
             {
                 var answer = new SurveyAnswer
                 {
-               
                     QuestionId = item.QuestionId,
                     TextAnswer = item.TextAnswer,
+
+                    // KENDİ ORİJİNAL HALİNE ÇEVİRDİK (Derleme hatası uçacak)
                     SelectedOptionId = item.SelectedOptionId,
+
                     AppUserId = userId!,
                     CreatedDate = DateTime.Now
                 };

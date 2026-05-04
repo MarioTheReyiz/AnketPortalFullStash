@@ -95,10 +95,10 @@
                         return;
                     }
 
-                    $("#lblSurveyTitle").text(survey.title);
-                    $("#lblSurveyDesc").text(survey.description || "Bu anket için açıklama girilmemiştir.");
+                    $("#lblSurveyTitle").text(survey.title || survey.Title);
+                    $("#lblSurveyDesc").text(survey.description || survey.Description || "Bu anket için açıklama girilmemiştir.");
 
-                    renderQuestions(survey.questions);
+                    renderQuestions(survey.questions || survey.Questions);
 
                     $("#surveyCard").fadeIn();
                 },
@@ -122,9 +122,12 @@
                 }
 
                 questions.forEach(function (q, index) {
-                    var questionText = q.text || q.Text || q.questionText || q.QuestionText; // Soru metnini garantiye aldık
+                    var questionText = q.text || q.Text || q.questionText || q.QuestionText;
+                    var qId = q.id || q.Id;
+                    var qType = q.type || q.Type;
+
                     var questionHtml = `
-                        <div class="question-block bg-white p-4 rounded-4 shadow-sm mb-4 border border-1" data-question-id="${q.id || q.Id}" data-question-type="${q.type || q.Type}">
+                        <div class="question-block bg-white p-4 rounded-4 shadow-sm mb-4 border border-1" data-question-id="${qId}" data-question-type="${qType}">
                             <h5 class="fw-bold text-dark mb-4">
                                 <span class="badge bg-primary me-2 rounded-circle">${index + 1}</span> ${questionText}
                             </h5>
@@ -137,13 +140,8 @@
                         questionHtml += `<span class="text-danger small"><i class="fa-solid fa-triangle-exclamation"></i> Bu soru için seçenek bulunamadı.</span>`;
                     } else {
                         optionsList.forEach(function (opt) {
-
-                            // UNDEFINED HATASININ ÇÖZÜMÜ BURADA! (Senin C# modelindeki ismi neyse onu yakalar)
                             var optId = opt.id || opt.Id;
                             var optText = opt.optionText || opt.OptionText || opt.text || opt.Text;
-
-                            var qType = q.type || q.Type;
-                            var qId = q.id || q.Id;
 
                             if (qType === 1) { // Radio
                                 questionHtml += `
@@ -195,15 +193,13 @@
                         $(this).removeClass("border-danger").addClass("border-1");
 
                         selectedOptions.each(function () {
-                            // İSTATİSTİK HATASININ ÇÖZÜMÜ BURADA! (C# API'ne her ihtimale karşı tüm isimlerle yolluyoruz)
                             var valId = parseInt($(this).val());
+
+                            // İŞTE BÜTÜN SORUNU ÇÖZEN KISIM BURASI (C# ile birebir aynı isimler)
                             answers.push({
-                                questionId: qId,
                                 QuestionId: qId,
-                                optionId: valId,
-                                OptionId: valId,
-                                questionOptionId: valId,
-                                QuestionOptionId: valId
+                                SelectedOptionId: valId,
+                                TextAnswer: null
                             });
                         });
                     }
@@ -215,16 +211,14 @@
                 }
 
                 var payload = {
-                    surveyId: parseInt(surveyId),
                     SurveyId: parseInt(surveyId),
-                    answers: answers,
                     Answers: answers
                 };
 
                 btn.prop("disabled", true).html('<i class="fas fa-spinner fa-spin me-2"></i> Gönderiliyor...');
 
                 $.ajax({
-                    url: "https://localhost:7094/api/Answer/Submit", // Portu kontrol et
+                    url: "https://localhost:7094/api/Answer/Submit", // Portunu API'ne göre kontrol et
                     type: "POST",
                     contentType: "application/json",
                     headers: { "Authorization": "Bearer " + token },
