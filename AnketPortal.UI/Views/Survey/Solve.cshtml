@@ -110,7 +110,7 @@
                 }
             });
 
-            // 2. SORULARI EKRANA DİNAMİK OLARAK ÇİZEN FONKSİYON
+            // 2. SORULARI EKRANA DİNAMİK OLARAK ÇİZEN FONKSİYON (RADIO, CHECKBOX VE TEXT DESTEKLİ)
             function renderQuestions(questions) {
                 var container = $("#questionsContainer");
                 container.empty();
@@ -122,9 +122,12 @@
                 }
 
                 questions.forEach(function (q, index) {
-                    var questionText = q.text || q.Text || q.questionText || q.QuestionText;
+                    // Soru metnini garantiye alalım (Büyük/Küçük harf fark etmez)
+                    var questionText = q.text || q.Text || q.questionText || q.QuestionText || "Soru " + (index + 1);
                     var qId = q.id || q.Id;
                     var qType = q.type || q.Type;
+                    // Enum karşılıkları genelde: 1 -> Text(Açık Uçlu), 2 -> SingleChoice(Radio), 3 -> MultipleChoice(Checkbox)
+                    // veya 1: Radio, 2: Checkbox, 3: Text olabilir. Tüm ihtimalleri kapsayacağız.
 
                     var questionHtml = `
                         <div class="question-block bg-white p-4 rounded-4 shadow-sm mb-4 border border-1" data-question-id="${qId}" data-question-type="${qType}">
@@ -134,28 +137,36 @@
                             <div class="options-container ps-2 ps-md-4">
                     `;
 
-                    var optionsList = q.options || q.Options;
+                    var optionsList = q.options || q.Options || [];
 
-                    if (!optionsList || optionsList.length === 0) {
-                        questionHtml += `<span class="text-danger small"><i class="fa-solid fa-triangle-exclamation"></i> Bu soru için seçenek bulunamadı.</span>`;
-                    } else {
+                    // EĞER AÇIK UÇLU SORU İSE (1 veya 'Text' veya seçenek yoksa)
+                    if (qType === 1 || qType === "Text" || qType === 3 || optionsList.length === 0) {
+                        questionHtml += `
+                            <textarea class="form-control text-answer-input" name="q_${qId}" rows="3" placeholder="Lütfen cevabınızı buraya yazınız..."></textarea>
+                        `;
+                    }
+                    // EĞER ÇOKTAN SEÇMELİ (RADIO VEYA CHECKBOX) İSE
+                    else {
                         optionsList.forEach(function (opt) {
                             var optId = opt.id || opt.Id;
-                            var optText = opt.optionText || opt.OptionText || opt.text || opt.Text;
+                            var optText = opt.optionText || opt.OptionText || opt.text || opt.Text || "Bilinmeyen Seçenek";
 
-                            if (qType === 1) { // Radio
+                            // EĞER CHECKBOX İSE (MultipleChoice veya tip numarasına göre ayarla, genelde 3'tür)
+                            if (qType === 3 || qType === "MultipleChoice" || qType === "Checkbox") {
                                 questionHtml += `
-                                    <div class="form-check custom-radio mb-3">
-                                        <input class="form-check-input option-input" type="radio" name="q_${qId}" id="opt_${optId}" value="${optId}">
+                                    <div class="form-check custom-checkbox mb-3">
+                                        <input class="form-check-input option-input" type="checkbox" name="q_${qId}" id="opt_${optId}" value="${optId}">
                                         <label class="form-check-label w-100 p-2 rounded" for="opt_${optId}" style="cursor:pointer;">
                                             ${optText}
                                         </label>
                                     </div>
                                 `;
-                            } else if (qType === 2) { // Checkbox
+                            }
+                            // EĞER RADIO İSE (SingleChoice veya standart 2)
+                            else {
                                 questionHtml += `
-                                    <div class="form-check custom-checkbox mb-3">
-                                        <input class="form-check-input option-input" type="checkbox" name="q_${qId}" id="opt_${optId}" value="${optId}">
+                                    <div class="form-check custom-radio mb-3">
+                                        <input class="form-check-input option-input" type="radio" name="q_${qId}" id="opt_${optId}" value="${optId}">
                                         <label class="form-check-label w-100 p-2 rounded" for="opt_${optId}" style="cursor:pointer;">
                                             ${optText}
                                         </label>
@@ -169,14 +180,21 @@
                     container.append(questionHtml);
                 });
 
+                // Tıklanan şıkkın rengini değiştirme efekti
                 $(".option-input").change(function() {
                     var qName = $(this).attr("name");
-                    $(`input[name='${qName}']`).siblings('label').removeClass('bg-primary bg-opacity-10 text-primary fw-bold');
-                    $(`input[name='${qName}']:checked`).siblings('label').addClass('bg-primary bg-opacity-10 text-primary fw-bold');
+                    if ($(this).attr('type') === 'radio') {
+                        $(`input[name='${qName}']`).siblings('label').removeClass('bg-primary bg-opacity-10 text-primary fw-bold');
+                    }
+                    if ($(this).is(':checked')) {
+                        $(this).siblings('label').addClass('bg-primary bg-opacity-10 text-primary fw-bold');
+                    } else {
+                        $(this).siblings('label').removeClass('bg-primary bg-opacity-10 text-primary fw-bold');
+                    }
                 });
             }
 
-            // 3. CEVAPLARI GÖNDERME İŞLEMİ
+            // 3. CEVAPLARI TOPLAYIP GÖNDERME İŞLEMİ
             $("#btnSubmitAnswers").click(function () {
                 var btn = $(this);
                 var answers = [];
@@ -184,32 +202,56 @@
 
                 $(".question-block").each(function () {
                     var qId = $(this).data("question-id");
+
+                    // Önce Radio/Checkbox seçilmiş mi diye bakıyoruz
                     var selectedOptions = $(this).find("input.option-input:checked");
 
-                    if (selectedOptions.length === 0) {
-                        unAnsweredCount++;
-                        $(this).addClass("border-danger").removeClass("border-1");
-                    } else {
-                        $(this).removeClass("border-danger").addClass("border-1");
+                    // Sonra Textarea doldurulmuş mu diye bakıyoruz
+                    var textInput = $(this).find("textarea.text-answer-input");
+                    var textVal = textInput.length > 0 ? textInput.val().trim() : "";
 
-                        selectedOptions.each(function () {
-                            var valId = parseInt($(this).val());
-
-                            // İŞTE BÜTÜN SORUNU ÇÖZEN KISIM BURASI (C# ile birebir aynı isimler)
+                    // EĞER AÇIK UÇLU SORUYSA (Textarea varsa)
+                    if (textInput.length > 0) {
+                        if (textVal === "") {
+                            unAnsweredCount++;
+                            $(this).addClass("border-danger").removeClass("border-1");
+                        } else {
+                            $(this).removeClass("border-danger").addClass("border-1");
                             answers.push({
                                 QuestionId: qId,
-                                SelectedOptionId: valId,
-                                TextAnswer: null
+                                SelectedOptionId: null, // Şık yok, null yolluyoruz
+                                TextAnswer: textVal // Sadece metin gidiyor
                             });
-                        });
+                        }
+                    }
+                    // EĞER ŞIKLI SORUYSA (Radio / Checkbox varsa)
+                    else {
+                        if (selectedOptions.length === 0) {
+                            unAnsweredCount++;
+                            $(this).addClass("border-danger").removeClass("border-1");
+                        } else {
+                            $(this).removeClass("border-danger").addClass("border-1");
+
+                            // Seçili tüm şıkları array'e bas (Checkbox için birden fazla olabilir)
+                            selectedOptions.each(function () {
+                                var valId = parseInt($(this).val());
+                                answers.push({
+                                    QuestionId: qId,
+                                    SelectedOptionId: valId, // C#'ın beklediği birebir ID
+                                    TextAnswer: null // Metin yok, null yolluyoruz
+                                });
+                            });
+                        }
                     }
                 });
 
+                // Boş soru varsa uyarı ver
                 if (unAnsweredCount > 0) {
                     Swal.fire('Eksik Cevap', `Lütfen tüm soruları cevaplayın. Kırmızı ile işaretlenmiş ${unAnsweredCount} soru boş bırakıldı.`, 'warning');
                     return;
                 }
 
+                // API'nin beklediği ana Model/DTO
                 var payload = {
                     SurveyId: parseInt(surveyId),
                     Answers: answers
@@ -218,7 +260,7 @@
                 btn.prop("disabled", true).html('<i class="fas fa-spinner fa-spin me-2"></i> Gönderiliyor...');
 
                 $.ajax({
-                    url: "https://localhost:7094/api/Answer/Submit", // Portunu API'ne göre kontrol et
+                    url: "https://localhost:7094/api/Answer/Submit", // Portu kontrol et!
                     type: "POST",
                     contentType: "application/json",
                     headers: { "Authorization": "Bearer " + token },
@@ -248,6 +290,7 @@
             });
         });
     </script>
+
     <style>
         /* Form elemanlarının boyutunu büyütüp tıklanabilirliğini artırıyoruz */
         .custom-radio input[type="radio"], .custom-checkbox input[type="checkbox"] {

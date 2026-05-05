@@ -1,6 +1,6 @@
 ﻿@{
-    ViewData["Title"] = "Anket Sonuçları";
-    Layout = "~/Views/Shared/_Layout.cshtml"; // Admin tarafıysa _Layout, User tarafıysa _UserLayout
+    ViewData["Title"] = "Anket Raporu";
+    Layout = "~/Views/Shared/_Layout.cshtml"; // Eger kullanici tarafindaysan _UserLayout yapabilirsin
 }
 
 <div class="container-fluid mt-4 mb-5">
@@ -8,7 +8,7 @@
     <div class="d-sm-flex align-items-center justify-content-between mb-4">
         <h1 class="h3 mb-0 text-gray-800 fw-bold">
             <i class="fa-solid fa-chart-pie text-primary me-2"></i>
-            <span id="lblSurveyTitle">Yükleniyor...</span>
+            <span id="lblSurveyTitle">Rapor Yükleniyor...</span>
         </h1>
         <div>
             <!-- EXCEL İNDİR BUTONU -->
@@ -48,7 +48,7 @@
 
             $.ajax({
                 // API URL'si
-                url: "https://localhost:7094/api/Survey/" + surveyId + "/Results", // Kendi portuna göre düzelt!
+                url: "https://localhost:7094/api/Survey/" + surveyId + "/Results",
                 type: "GET",
                 headers: { "Authorization": "Bearer " + token },
                 success: function (res) {
@@ -56,7 +56,11 @@
                     // 1. Yükleniyor animasyonunu temizle
                     $("#loadingDiv").remove();
 
-                    var surveyData = res.data ? res.data : res;
+                    // API bazen direkt Data döner, bazen sarmallayıp döner. İkisini de kapsadık.
+                    var surveyData = null;
+                    if (res && res.data) surveyData = res.data;
+                    else if (res && res.Data) surveyData = res.Data;
+                    else surveyData = res;
 
                     if (!surveyData) {
                         Swal.fire('Hata', 'Rapor verisi bulunamadı.', 'error');
@@ -64,21 +68,26 @@
                     }
 
                     var questions = [];
+                    var surveyTitle = "Anket";
 
-                    // 2. GELEN VERİ BİR DİZİ Mİ YOKSA NESNE Mİ KONTROL ET (undefined hatasını KÖKÜNDEN çözer!)
+                    // 2. GELEN VERİ DİZİ (ARRAY) Mİ YOKSA NESNE (OBJECT) Mİ?
                     if (Array.isArray(surveyData)) {
-                        // API bir liste (ResultDto listesi) dönmüş
-                        $("#lblSurveyTitle").text("Anket Raporu");
+                        // Eğer ResultDto gibi bir liste dönüyorsa
                         questions = surveyData;
+                        // Diziden başlık çıkaramayacağımız için genel bir isim verdik
+                        surveyTitle = "Anket Raporu";
                     } else {
-                        // API bir nesne (Survey objesi) dönmüş
-                        var sTitle = surveyData.title || surveyData.Title || surveyData.name || surveyData.Name || "Bilinmeyen Anket";
-                        $("#lblSurveyTitle").text(sTitle + " - Raporu");
-                        questions = surveyData.questions || surveyData.Questions || [];
+                        // Eğer Survey gibi bir obje dönüyorsa
+                        questions = surveyData.questions || surveyData.Questions || surveyData.results || surveyData.Results || [];
+                        surveyTitle = surveyData.title || surveyData.Title || surveyData.surveyTitle || surveyData.SurveyTitle || "Anket";
+                        surveyTitle += " - Raporu";
                     }
 
+                    // Başlığı ekrana yazdırıyoruz (Undefined hatasını bitiren satır!)
+                    $("#lblSurveyTitle").text(surveyTitle);
+
                     // 3. EĞER HİÇ SORU/CEVAP YOKSA
-                    if (questions.length === 0) {
+                    if (!questions || questions.length === 0) {
                         $("#chartsContainer").html('<div class="col-12"><div class="alert alert-warning text-center">Bu anket için henüz soru veya yanıt bulunmuyor.</div></div>');
                         return;
                     }
@@ -88,7 +97,6 @@
 
                     // 4. GRAFİKLERİ EKRANA ÇİZ
                     questions.forEach(function (q, index) {
-                        // DTO veya Model'deki tüm isim ihtimalleri (Büyük/Küçük harf garantili)
                         var qText = q.questionText || q.QuestionText || q.text || q.Text || "Soru " + (index + 1);
                         var options = q.options || q.Options || q.results || q.Results || [];
 
@@ -115,7 +123,6 @@
 
                         options.forEach(function (opt) {
                             labels.push(opt.optionText || opt.OptionText || opt.text || opt.Text || "Bilinmeyen Şık");
-                            // Count, VoteCount vs.. hepsini dener
                             counts.push(opt.count || opt.Count || opt.voteCount || opt.VoteCount || opt.answerCount || opt.AnswerCount || 0);
                         });
 
@@ -162,7 +169,6 @@
                 }
             });
 
-            // Excel indirme tuşunun click fonksiyonu
             $("#btnExportExcel").click(function() {
                 Swal.fire('Bilgi', 'Excel aktarımı API tarafında hazırlanacak.', 'info');
             });
