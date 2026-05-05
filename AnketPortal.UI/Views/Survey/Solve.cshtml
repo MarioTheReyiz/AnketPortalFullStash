@@ -1,6 +1,5 @@
 ﻿@{
     ViewData["Title"] = "Anketi Çöz";
-    // Vitrin olduğu için User Layout kullanıyoruz
     Layout = "~/Views/Shared/_UserLayout.cshtml";
 }
 
@@ -8,32 +7,25 @@
     <div class="row justify-content-center">
         <div class="col-lg-8 col-md-10">
 
-            <!-- Yükleniyor Göstergesi -->
             <div id="loadingDiv" class="text-center py-5">
                 <i class="fas fa-spinner fa-spin fa-3x text-primary mb-3"></i>
                 <h5 class="text-muted">Anket Yükleniyor...</h5>
             </div>
 
-            <!-- Anket Ana Kartı (Gizli Başlar) -->
             <div id="surveyCard" class="card shadow border-0 rounded-4 overflow-hidden" style="display:none;">
 
-                <!-- Anket Başlık ve Açıklama -->
                 <div class="card-header bg-primary text-white p-4 p-md-5 border-0 position-relative">
                     <h2 class="fw-bold mb-3" id="lblSurveyTitle">Yükleniyor...</h2>
                     <p class="fs-6 mb-0 opacity-75" id="lblSurveyDesc">Açıklama yükleniyor...</p>
                     <i class="fa-solid fa-clipboard-question position-absolute text-white opacity-25" style="font-size: 8rem; right: -20px; bottom: -20px;"></i>
                 </div>
 
-                <!-- Sorular ve Form -->
                 <div class="card-body p-4 p-md-5 bg-light">
                     <form id="frmSolveSurvey">
-
-                        <!-- Sorular buraya JS ile dinamik eklenecek -->
                         <div id="questionsContainer"></div>
 
                         <hr class="my-5 opacity-25">
 
-                        <!-- Gönder Butonu -->
                         <div class="text-end">
                             <button type="button" id="btnSubmitAnswers" class="btn btn-primary btn-lg rounded-pill px-5 fw-bold shadow">
                                 <i class="fa-solid fa-paper-plane me-2"></i> Cevapları Gönder
@@ -50,7 +42,6 @@
 @section Scripts {
     <script>
         $(document).ready(function () {
-            // ViewBag'den C#'ın yolladığı Anket ID'sini alıyoruz
             var surveyId = '@(ViewBag.SurveyId ?? 0)';
             var token = localStorage.getItem("token");
 
@@ -60,15 +51,15 @@
             }
 
             if (surveyId == '0' || surveyId == '') {
-                Swal.fire('Hata', 'Geçersiz anket numarası. Linki kontrol ediniz.', 'error').then(() => {
+                Swal.fire('Hata', 'Geçersiz anket numarası.', 'error').then(() => {
                     window.location.replace("/Home/Surveys");
                 });
                 return;
             }
 
-            // 1. ANKETİ VE SORULARI API'DEN ÇEK
+            // 1. API'DEN ANKETİ ÇEK
             $.ajax({
-                url: "https://localhost:7094/api/Survey/" + surveyId, // Portunu kontrol et
+                url: "https://localhost:7094/api/Survey/" + surveyId,
                 type: "GET",
                 headers: { "Authorization": "Bearer " + token },
                 success: function (res) {
@@ -82,9 +73,7 @@
                     }
 
                     if (!survey) {
-                        Swal.fire('Hata', 'Anket verisi sunucudan okunamadı.', 'error').then(() => {
-                            window.location.replace("/Home/Surveys");
-                        });
+                        Swal.fire('Hata', 'Anket verisi sunucudan okunamadı.', 'error');
                         return;
                     }
 
@@ -103,14 +92,11 @@
                     $("#surveyCard").fadeIn();
                 },
                 error: function (xhr) {
-                    var errorMsg = "Anket bilgileri alınırken hata oluştu. Lütfen sayfayı yenileyin.";
-                    Swal.fire('Hata!', errorMsg, 'error').then(() => {
-                        window.location.replace("/Home/Surveys");
-                    });
+                    Swal.fire('Hata!', 'Anket bilgileri alınırken hata oluştu.', 'error');
                 }
             });
 
-            // 2. SORULARI EKRANA DİNAMİK OLARAK ÇİZEN FONKSİYON (RADIO, CHECKBOX VE TEXT DESTEKLİ)
+            // 2. SORULARI ÇİZ (TÜM NUMARA HATALARI DÜZELTİLDİ!)
             function renderQuestions(questions) {
                 var container = $("#questionsContainer");
                 container.empty();
@@ -122,12 +108,9 @@
                 }
 
                 questions.forEach(function (q, index) {
-                    // Soru metnini garantiye alalım (Büyük/Küçük harf fark etmez)
-                    var questionText = q.text || q.Text || q.questionText || q.QuestionText || "Soru " + (index + 1);
+                    var questionText = q.text || q.Text || q.questionText || q.QuestionText;
                     var qId = q.id || q.Id;
                     var qType = q.type || q.Type;
-                    // Enum karşılıkları genelde: 1 -> Text(Açık Uçlu), 2 -> SingleChoice(Radio), 3 -> MultipleChoice(Checkbox)
-                    // veya 1: Radio, 2: Checkbox, 3: Text olabilir. Tüm ihtimalleri kapsayacağız.
 
                     var questionHtml = `
                         <div class="question-block bg-white p-4 rounded-4 shadow-sm mb-4 border border-1" data-question-id="${qId}" data-question-type="${qType}">
@@ -137,50 +120,53 @@
                             <div class="options-container ps-2 ps-md-4">
                     `;
 
-                    var optionsList = q.options || q.Options || [];
-
-                    // EĞER AÇIK UÇLU SORU İSE (1 veya 'Text' veya seçenek yoksa)
-                    if (qType === 1 || qType === "Text" || qType === 3 || optionsList.length === 0) {
+                    // qType === 1 : AÇIK UÇLU (METİN)
+                    if (qType === 1 || qType === "Text") {
                         questionHtml += `
                             <textarea class="form-control text-answer-input" name="q_${qId}" rows="3" placeholder="Lütfen cevabınızı buraya yazınız..."></textarea>
                         `;
                     }
-                    // EĞER ÇOKTAN SEÇMELİ (RADIO VEYA CHECKBOX) İSE
+                    // qType === 2 (Radio) veya 3 (Checkbox) : ŞIKLI SORULAR
                     else {
-                        optionsList.forEach(function (opt) {
-                            var optId = opt.id || opt.Id;
-                            var optText = opt.optionText || opt.OptionText || opt.text || opt.Text || "Bilinmeyen Seçenek";
+                        var optionsList = q.options || q.Options;
 
-                            // EĞER CHECKBOX İSE (MultipleChoice veya tip numarasına göre ayarla, genelde 3'tür)
-                            if (qType === 3 || qType === "MultipleChoice" || qType === "Checkbox") {
-                                questionHtml += `
-                                    <div class="form-check custom-checkbox mb-3">
-                                        <input class="form-check-input option-input" type="checkbox" name="q_${qId}" id="opt_${optId}" value="${optId}">
-                                        <label class="form-check-label w-100 p-2 rounded" for="opt_${optId}" style="cursor:pointer;">
-                                            ${optText}
-                                        </label>
-                                    </div>
-                                `;
-                            }
-                            // EĞER RADIO İSE (SingleChoice veya standart 2)
-                            else {
-                                questionHtml += `
-                                    <div class="form-check custom-radio mb-3">
-                                        <input class="form-check-input option-input" type="radio" name="q_${qId}" id="opt_${optId}" value="${optId}">
-                                        <label class="form-check-label w-100 p-2 rounded" for="opt_${optId}" style="cursor:pointer;">
-                                            ${optText}
-                                        </label>
-                                    </div>
-                                `;
-                            }
-                        });
+                        if (!optionsList || optionsList.length === 0) {
+                            questionHtml += `<span class="text-danger small"><i class="fa-solid fa-triangle-exclamation"></i> Bu soru için seçenek bulunamadı. Lütfen admin panelinden şık ekleyin.</span>`;
+                        } else {
+                            optionsList.forEach(function (opt) {
+                                var optId = opt.id || opt.Id;
+                                var optText = opt.optionText || opt.OptionText || opt.text || opt.Text || "Seçenek";
+
+                                // qType === 3 : CHECKBOX (ÇOKLU SEÇİM)
+                                if (qType === 3 || qType === "Checkbox" || qType === "MultipleChoice") {
+                                    questionHtml += `
+                                        <div class="form-check custom-checkbox mb-3">
+                                            <input class="form-check-input option-input" type="checkbox" name="q_${qId}" id="opt_${optId}" value="${optId}">
+                                            <label class="form-check-label w-100 p-2 rounded" for="opt_${optId}" style="cursor:pointer;">
+                                                ${optText}
+                                            </label>
+                                        </div>
+                                    `;
+                                }
+                                // qType === 2 : RADIO (TEK SEÇİM)
+                                else {
+                                    questionHtml += `
+                                        <div class="form-check custom-radio mb-3">
+                                            <input class="form-check-input option-input" type="radio" name="q_${qId}" id="opt_${optId}" value="${optId}">
+                                            <label class="form-check-label w-100 p-2 rounded" for="opt_${optId}" style="cursor:pointer;">
+                                                ${optText}
+                                            </label>
+                                        </div>
+                                    `;
+                                }
+                            });
+                        }
                     }
 
                     questionHtml += `</div></div>`;
                     container.append(questionHtml);
                 });
 
-                // Tıklanan şıkkın rengini değiştirme efekti
                 $(".option-input").change(function() {
                     var qName = $(this).attr("name");
                     if ($(this).attr('type') === 'radio') {
@@ -194,7 +180,7 @@
                 });
             }
 
-            // 3. CEVAPLARI TOPLAYIP GÖNDERME İŞLEMİ
+            // 3. GÖNDERME KISMI
             $("#btnSubmitAnswers").click(function () {
                 var btn = $(this);
                 var answers = [];
@@ -202,16 +188,13 @@
 
                 $(".question-block").each(function () {
                     var qId = $(this).data("question-id");
+                    var qType = $(this).data("question-type");
 
-                    // Önce Radio/Checkbox seçilmiş mi diye bakıyoruz
-                    var selectedOptions = $(this).find("input.option-input:checked");
+                    // qType === 1 : AÇIK UÇLU METİN
+                    if (qType === 1 || qType === "Text") {
+                        var textInput = $(this).find("textarea.text-answer-input");
+                        var textVal = textInput.length > 0 ? textInput.val().trim() : "";
 
-                    // Sonra Textarea doldurulmuş mu diye bakıyoruz
-                    var textInput = $(this).find("textarea.text-answer-input");
-                    var textVal = textInput.length > 0 ? textInput.val().trim() : "";
-
-                    // EĞER AÇIK UÇLU SORUYSA (Textarea varsa)
-                    if (textInput.length > 0) {
                         if (textVal === "") {
                             unAnsweredCount++;
                             $(this).addClass("border-danger").removeClass("border-1");
@@ -219,39 +202,38 @@
                             $(this).removeClass("border-danger").addClass("border-1");
                             answers.push({
                                 QuestionId: qId,
-                                SelectedOptionId: null, // Şık yok, null yolluyoruz
-                                TextAnswer: textVal // Sadece metin gidiyor
+                                SelectedOptionId: null,
+                                TextAnswer: textVal
                             });
                         }
                     }
-                    // EĞER ŞIKLI SORUYSA (Radio / Checkbox varsa)
+                    // ŞIKLI SORULAR (Radio veya Checkbox)
                     else {
+                        var selectedOptions = $(this).find("input.option-input:checked");
+
                         if (selectedOptions.length === 0) {
                             unAnsweredCount++;
                             $(this).addClass("border-danger").removeClass("border-1");
                         } else {
                             $(this).removeClass("border-danger").addClass("border-1");
 
-                            // Seçili tüm şıkları array'e bas (Checkbox için birden fazla olabilir)
                             selectedOptions.each(function () {
                                 var valId = parseInt($(this).val());
                                 answers.push({
                                     QuestionId: qId,
-                                    SelectedOptionId: valId, // C#'ın beklediği birebir ID
-                                    TextAnswer: null // Metin yok, null yolluyoruz
+                                    SelectedOptionId: valId,
+                                    TextAnswer: null
                                 });
                             });
                         }
                     }
                 });
 
-                // Boş soru varsa uyarı ver
                 if (unAnsweredCount > 0) {
                     Swal.fire('Eksik Cevap', `Lütfen tüm soruları cevaplayın. Kırmızı ile işaretlenmiş ${unAnsweredCount} soru boş bırakıldı.`, 'warning');
                     return;
                 }
 
-                // API'nin beklediği ana Model/DTO
                 var payload = {
                     SurveyId: parseInt(surveyId),
                     Answers: answers
@@ -260,7 +242,7 @@
                 btn.prop("disabled", true).html('<i class="fas fa-spinner fa-spin me-2"></i> Gönderiliyor...');
 
                 $.ajax({
-                    url: "https://localhost:7094/api/Answer/Submit", // Portu kontrol et!
+                    url: "https://localhost:7094/api/Answer/Submit",
                     type: "POST",
                     contentType: "application/json",
                     headers: { "Authorization": "Bearer " + token },
@@ -292,7 +274,6 @@
     </script>
 
     <style>
-        /* Form elemanlarının boyutunu büyütüp tıklanabilirliğini artırıyoruz */
         .custom-radio input[type="radio"], .custom-checkbox input[type="checkbox"] {
             width: 1.5em;
             height: 1.5em;

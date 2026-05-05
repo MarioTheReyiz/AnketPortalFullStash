@@ -1,17 +1,15 @@
 ﻿@{
     ViewData["Title"] = "Anket Raporu";
-    Layout = "~/Views/Shared/_Layout.cshtml"; // Eger kullanici tarafindaysan _UserLayout yapabilirsin
+    Layout = "~/Views/Shared/_Layout.cshtml";
 }
 
 <div class="container-fluid mt-4 mb-5">
-    <!-- BAŞLIK -->
     <div class="d-sm-flex align-items-center justify-content-between mb-4">
         <h1 class="h3 mb-0 text-gray-800 fw-bold">
             <i class="fa-solid fa-chart-pie text-primary me-2"></i>
             <span id="lblSurveyTitle">Rapor Yükleniyor...</span>
         </h1>
         <div>
-            <!-- EXCEL İNDİR BUTONU -->
             <button id="btnExportExcel" class="btn btn-sm btn-success shadow-sm me-2 d-none">
                 <i class="fa-solid fa-file-excel me-1"></i> Sonuçları İndir (CSV)
             </button>
@@ -21,9 +19,7 @@
         </div>
     </div>
 
-    <!-- GRAFİKLER ALANI -->
     <div class="row" id="chartsContainer">
-        <!-- Yükleniyor animasyonu -->
         <div class="col-12 text-center py-5" id="loadingDiv">
             <i class="fas fa-spinner fa-spin fa-3x text-primary mb-3"></i>
             <h5 class="text-muted">Veriler analiz ediliyor...</h5>
@@ -32,7 +28,6 @@
 </div>
 
 @section Scripts {
-    <!-- Chart.js Kütüphanesi -->
     <script src="https://cdn.jsdelivr.net/npm/chart.js"></script>
 
     <script>
@@ -47,20 +42,13 @@
             }
 
             $.ajax({
-                // API URL'si
-                url: "https://localhost:7094/api/Survey/" + surveyId + "/Results",
+                url: "https://localhost:7094/api/Survey/" + surveyId + "/Results", // Portuna dikkat et
                 type: "GET",
                 headers: { "Authorization": "Bearer " + token },
                 success: function (res) {
-
-                    // 1. Yükleniyor animasyonunu temizle
                     $("#loadingDiv").remove();
 
-                    // API bazen direkt Data döner, bazen sarmallayıp döner. İkisini de kapsadık.
-                    var surveyData = null;
-                    if (res && res.data) surveyData = res.data;
-                    else if (res && res.Data) surveyData = res.Data;
-                    else surveyData = res;
+                    var surveyData = res.data ? res.data : (res.Data ? res.Data : res);
 
                     if (!surveyData) {
                         Swal.fire('Hata', 'Rapor verisi bulunamadı.', 'error');
@@ -70,97 +58,112 @@
                     var questions = [];
                     var surveyTitle = "Anket";
 
-                    // 2. GELEN VERİ DİZİ (ARRAY) Mİ YOKSA NESNE (OBJECT) Mİ?
                     if (Array.isArray(surveyData)) {
-                        // Eğer ResultDto gibi bir liste dönüyorsa
                         questions = surveyData;
-                        // Diziden başlık çıkaramayacağımız için genel bir isim verdik
                         surveyTitle = "Anket Raporu";
                     } else {
-                        // Eğer Survey gibi bir obje dönüyorsa
                         questions = surveyData.questions || surveyData.Questions || surveyData.results || surveyData.Results || [];
                         surveyTitle = surveyData.title || surveyData.Title || surveyData.surveyTitle || surveyData.SurveyTitle || "Anket";
                         surveyTitle += " - Raporu";
                     }
 
-                    // Başlığı ekrana yazdırıyoruz (Undefined hatasını bitiren satır!)
                     $("#lblSurveyTitle").text(surveyTitle);
 
-                    // 3. EĞER HİÇ SORU/CEVAP YOKSA
                     if (!questions || questions.length === 0) {
                         $("#chartsContainer").html('<div class="col-12"><div class="alert alert-warning text-center">Bu anket için henüz soru veya yanıt bulunmuyor.</div></div>');
                         return;
                     }
 
-                    // Veri varsa indirme tuşunu göster
                     $("#btnExportExcel").removeClass("d-none");
 
-                    // 4. GRAFİKLERİ EKRANA ÇİZ
                     questions.forEach(function (q, index) {
                         var qText = q.questionText || q.QuestionText || q.text || q.Text || "Soru " + (index + 1);
+                        var qType = q.type || q.Type;
                         var options = q.options || q.Options || q.results || q.Results || [];
+                        var textAnswers = q.textAnswers || q.TextAnswers || [];
 
+                        // Kartın dış iskeleti
                         var questionCard = `
                             <div class="col-xl-6 col-lg-12 mb-4">
                                 <div class="card shadow-sm border-0 h-100 rounded-4">
                                     <div class="card-header bg-white border-bottom-0 pt-4 pb-0">
                                         <h5 class="fw-bold text-primary">Soru ${index + 1}: <span class="text-dark">${qText}</span></h5>
                                     </div>
-                                    <div class="card-body">
-                                        <div class="chart-container" style="position: relative; height:300px; width:100%">
-                                            <canvas id="chart_${index}"></canvas>
-                                        </div>
+                                    <div class="card-body" id="cardBody_${index}">
+                                        <!-- İçerik Buraya Gelecek -->
                                     </div>
                                 </div>
                             </div>
                         `;
 
                         $("#chartsContainer").append(questionCard);
+                        var cardBody = $(`#cardBody_${index}`);
 
-                        var labels = [];
-                        var counts = [];
-                        var bgColors = ['#4e73df', '#1cc88a', '#36b9cc', '#f6c23e', '#e74a3b', '#858796', '#5a5c69', '#2e59d9'];
+                        // DÜZELTİLEN YER: qType === 1 ise AÇIK UÇLU SORUDUR (Metinleri Liste Yap)
+                        if (qType === 1 || qType === "Text") {
+                            if (textAnswers.length === 0) {
+                                cardBody.html('<div class="alert alert-light text-danger text-center">Bu soruya henüz hiç yanıt verilmemiş.</div>');
+                            } else {
+                                var htmlList = '<ul class="list-group list-group-flush" style="max-height: 250px; overflow-y: auto;">';
+                                textAnswers.forEach(function(txt) {
+                                    htmlList += `<li class="list-group-item"><i class="fa-solid fa-comment-dots text-secondary me-2"></i> ${txt}</li>`;
+                                });
+                                htmlList += '</ul>';
+                                cardBody.html(htmlList);
+                            }
+                        }
+                        // DÜZELTİLEN YER: qType === 2 (Radio) veya 3 (Checkbox) İSE (Grafik Çiz)
+                        else {
+                            cardBody.html(`
+                                <div class="chart-container" style="position: relative; height:300px; width:100%">
+                                    <canvas id="chart_${index}"></canvas>
+                                </div>
+                            `);
 
-                        options.forEach(function (opt) {
-                            labels.push(opt.optionText || opt.OptionText || opt.text || opt.Text || "Bilinmeyen Şık");
-                            counts.push(opt.count || opt.Count || opt.voteCount || opt.VoteCount || opt.answerCount || opt.AnswerCount || 0);
-                        });
+                            var labels = [];
+                            var counts = [];
+                            var bgColors = ['#4e73df', '#1cc88a', '#36b9cc', '#f6c23e', '#e74a3b', '#858796', '#5a5c69', '#2e59d9'];
 
-                        var isAllZero = counts.every(item => item === 0);
+                            options.forEach(function (opt) {
+                                labels.push(opt.optionText || opt.OptionText || opt.text || opt.Text || "Bilinmeyen Şık");
+                                counts.push(opt.count || opt.Count || opt.voteCount || opt.VoteCount || opt.answerCount || opt.AnswerCount || 0);
+                            });
 
-                        var ctx = document.getElementById(`chart_${index}`).getContext('2d');
-                        new Chart(ctx, {
-                            type: 'bar',
-                            data: {
-                                labels: labels,
-                                datasets: [{
-                                    label: 'Oy Sayısı',
-                                    data: counts,
-                                    backgroundColor: bgColors.slice(0, labels.length),
-                                    borderWidth: 0,
-                                    borderRadius: 4
-                                }]
-                            },
-                            options: {
-                                responsive: true,
-                                maintainAspectRatio: false,
-                                plugins: {
-                                    legend: { display: false },
-                                    title: {
-                                        display: isAllZero,
-                                        text: 'Bu soruya henüz hiç yanıt verilmemiş.',
-                                        color: '#e74a3b',
-                                        font: { size: 14 }
-                                    }
+                            var isAllZero = counts.every(item => item === 0);
+                            var ctx = document.getElementById(`chart_${index}`).getContext('2d');
+                            new Chart(ctx, {
+                                type: 'bar',
+                                data: {
+                                    labels: labels,
+                                    datasets: [{
+                                        label: 'Oy Sayısı',
+                                        data: counts,
+                                        backgroundColor: bgColors.slice(0, labels.length),
+                                        borderWidth: 0,
+                                        borderRadius: 4
+                                    }]
                                 },
-                                scales: {
-                                    y: {
-                                        beginAtZero: true,
-                                        ticks: { precision: 0 }
+                                options: {
+                                    responsive: true,
+                                    maintainAspectRatio: false,
+                                    plugins: {
+                                        legend: { display: false },
+                                        title: {
+                                            display: isAllZero,
+                                            text: 'Bu soruya henüz hiç geçerli yanıt verilmemiş.',
+                                            color: '#e74a3b',
+                                            font: { size: 14 }
+                                        }
+                                    },
+                                    scales: {
+                                        y: {
+                                            beginAtZero: true,
+                                            ticks: { precision: 0 }
+                                        }
                                     }
                                 }
-                            }
-                        });
+                            });
+                        }
                     });
                 },
                 error: function (xhr) {
