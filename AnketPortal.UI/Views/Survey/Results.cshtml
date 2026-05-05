@@ -10,8 +10,9 @@
             <span id="lblSurveyTitle">Rapor Yükleniyor...</span>
         </h1>
         <div>
+            <!-- EXCEL İNDİR BUTONU -->
             <button id="btnExportExcel" class="btn btn-sm btn-success shadow-sm me-2 d-none">
-                <i class="fa-solid fa-file-excel me-1"></i> Sonuçları İndir (CSV)
+                <i class="fa-solid fa-file-excel me-1"></i> Sonuçları İndir (Excel)
             </button>
             <a href="/Survey/Index" class="btn btn-sm btn-secondary shadow-sm">
                 <i class="fa-solid fa-arrow-left fa-sm text-white-50"></i> Anketlere Dön
@@ -19,10 +20,11 @@
         </div>
     </div>
 
+    <!-- GRAFİKLER VE LİSTELER ALANI -->
     <div class="row" id="chartsContainer">
         <div class="col-12 text-center py-5" id="loadingDiv">
             <i class="fas fa-spinner fa-spin fa-3x text-primary mb-3"></i>
-            <h5 class="text-muted">Veriler analiz ediliyor...</h5>
+            <h5 class="text-muted">Raporlar Derleniyor...</h5>
         </div>
     </div>
 </div>
@@ -35,37 +37,30 @@
             var pathArray = window.location.pathname.split('/');
             var surveyId = pathArray[pathArray.length - 1];
             var token = localStorage.getItem("token");
+            var globalSurveyData = null;
 
             if (!token) {
                 window.location.replace("/Auth/Login");
                 return;
             }
 
+            // API'DEN VERİYİ ÇEK
             $.ajax({
-                url: "https://localhost:7094/api/Survey/" + surveyId + "/Results", // Portuna dikkat et
+                url: "https://localhost:7094/api/Survey/" + surveyId + "/Results",
                 type: "GET",
                 headers: { "Authorization": "Bearer " + token },
                 success: function (res) {
                     $("#loadingDiv").remove();
 
-                    var surveyData = res.data ? res.data : (res.Data ? res.Data : res);
+                    globalSurveyData = res.data ? res.data : (res.Data ? res.Data : res);
 
-                    if (!surveyData) {
+                    if (!globalSurveyData) {
                         Swal.fire('Hata', 'Rapor verisi bulunamadı.', 'error');
                         return;
                     }
 
-                    var questions = [];
-                    var surveyTitle = "Anket";
-
-                    if (Array.isArray(surveyData)) {
-                        questions = surveyData;
-                        surveyTitle = "Anket Raporu";
-                    } else {
-                        questions = surveyData.questions || surveyData.Questions || surveyData.results || surveyData.Results || [];
-                        surveyTitle = surveyData.title || surveyData.Title || surveyData.surveyTitle || surveyData.SurveyTitle || "Anket";
-                        surveyTitle += " - Raporu";
-                    }
+                    var questions = globalSurveyData.questions || globalSurveyData.Questions || [];
+                    var surveyTitle = (globalSurveyData.title || globalSurveyData.Title || "Anket") + " Raporu";
 
                     $("#lblSurveyTitle").text(surveyTitle);
 
@@ -76,46 +71,51 @@
 
                     $("#btnExportExcel").removeClass("d-none");
 
+                    // SORULARI DÖN VE EKRANA BAS
                     questions.forEach(function (q, index) {
                         var qText = q.questionText || q.QuestionText || q.text || q.Text || "Soru " + (index + 1);
                         var qType = q.type || q.Type;
-                        var options = q.options || q.Options || q.results || q.Results || [];
+                        var options = q.options || q.Options || [];
                         var textAnswers = q.textAnswers || q.TextAnswers || [];
+                        var totalVotes = q.totalVotes || q.TotalVotes || 0;
 
-                        // Kartın dış iskeleti
                         var questionCard = `
                             <div class="col-xl-6 col-lg-12 mb-4">
                                 <div class="card shadow-sm border-0 h-100 rounded-4">
                                     <div class="card-header bg-white border-bottom-0 pt-4 pb-0">
-                                        <h5 class="fw-bold text-primary">Soru ${index + 1}: <span class="text-dark">${qText}</span></h5>
+                                        <h5 class="fw-bold text-primary mb-1">Soru ${index + 1}</h5>
+                                        <p class="text-dark fs-5 mb-0">${qText}</p>
                                     </div>
-                                    <div class="card-body" id="cardBody_${index}">
-                                        <!-- İçerik Buraya Gelecek -->
+                                    <div class="card-body d-flex flex-column" id="cardBody_${index}">
                                     </div>
                                 </div>
                             </div>
                         `;
-
                         $("#chartsContainer").append(questionCard);
                         var cardBody = $(`#cardBody_${index}`);
 
-                        // DÜZELTİLEN YER: qType === 1 ise AÇIK UÇLU SORUDUR (Metinleri Liste Yap)
+                        // AÇIK UÇLU SORUYSA
                         if (qType === 1 || qType === "Text") {
+                            var htmlList = `<div class="alert alert-primary bg-opacity-10 border-0 text-primary fw-bold py-2 px-3 mb-3"><i class="fa-solid fa-users me-2"></i> Toplam ${totalVotes} kişi metin yanıtı bıraktı.</div>`;
+
                             if (textAnswers.length === 0) {
-                                cardBody.html('<div class="alert alert-light text-danger text-center">Bu soruya henüz hiç yanıt verilmemiş.</div>');
+                                htmlList += '<div class="text-muted text-center py-4"><i class="fa-solid fa-comment-slash fa-2x mb-2"></i><br>Henüz yanıt yok.</div>';
                             } else {
-                                var htmlList = '<ul class="list-group list-group-flush" style="max-height: 250px; overflow-y: auto;">';
+                                htmlList += '<div class="list-group list-group-flush rounded-3 shadow-sm" style="max-height: 250px; overflow-y: auto;">';
                                 textAnswers.forEach(function(txt) {
-                                    htmlList += `<li class="list-group-item"><i class="fa-solid fa-comment-dots text-secondary me-2"></i> ${txt}</li>`;
+                                    htmlList += `<div class="list-group-item list-group-item-action border-bottom py-3">
+                                                    <i class="fa-solid fa-quote-left text-primary opacity-50 me-2"></i> ${txt}
+                                                 </div>`;
                                 });
-                                htmlList += '</ul>';
-                                cardBody.html(htmlList);
+                                htmlList += '</div>';
                             }
+                            cardBody.html(htmlList);
                         }
-                        // DÜZELTİLEN YER: qType === 2 (Radio) veya 3 (Checkbox) İSE (Grafik Çiz)
+                        // ÇOKTAN SEÇMELİ / CHECKBOX İSE
                         else {
                             cardBody.html(`
-                                <div class="chart-container" style="position: relative; height:300px; width:100%">
+                                <div class="alert alert-success bg-opacity-10 border-0 text-success fw-bold py-2 px-3 mb-3"><i class="fa-solid fa-chart-bar me-2"></i> Toplam ${totalVotes} oy kullanıldı.</div>
+                                <div class="chart-container flex-grow-1" style="position: relative; min-height: 250px; width:100%">
                                     <canvas id="chart_${index}"></canvas>
                                 </div>
                             `);
@@ -125,8 +125,8 @@
                             var bgColors = ['#4e73df', '#1cc88a', '#36b9cc', '#f6c23e', '#e74a3b', '#858796', '#5a5c69', '#2e59d9'];
 
                             options.forEach(function (opt) {
-                                labels.push(opt.optionText || opt.OptionText || opt.text || opt.Text || "Bilinmeyen Şık");
-                                counts.push(opt.count || opt.Count || opt.voteCount || opt.VoteCount || opt.answerCount || opt.AnswerCount || 0);
+                                labels.push(opt.optionText || opt.OptionText || "Şık");
+                                counts.push(opt.count || opt.Count || 0);
                             });
 
                             var isAllZero = counts.every(item => item === 0);
@@ -140,40 +140,98 @@
                                         data: counts,
                                         backgroundColor: bgColors.slice(0, labels.length),
                                         borderWidth: 0,
-                                        borderRadius: 4
+                                        borderRadius: 6
                                     }]
                                 },
                                 options: {
                                     responsive: true,
                                     maintainAspectRatio: false,
-                                    plugins: {
-                                        legend: { display: false },
-                                        title: {
-                                            display: isAllZero,
-                                            text: 'Bu soruya henüz hiç geçerli yanıt verilmemiş.',
-                                            color: '#e74a3b',
-                                            font: { size: 14 }
-                                        }
-                                    },
-                                    scales: {
-                                        y: {
-                                            beginAtZero: true,
-                                            ticks: { precision: 0 }
-                                        }
-                                    }
+                                    plugins: { legend: { display: false } },
+                                    scales: { y: { beginAtZero: true, ticks: { precision: 0 } } }
                                 }
                             });
                         }
                     });
                 },
-                error: function (xhr) {
+                error: function () {
                     $("#loadingDiv").remove();
-                    Swal.fire('Hata', 'Raporlar API den çekilemedi. Bağlantıyı kontrol edin.', 'error');
+                    Swal.fire('Hata', 'Raporlar çekilemedi.', 'error');
                 }
             });
 
+            // ==========================================
+            // MÜKEMMELLEŞTİRİLMİŞ EXCEL İNDİRME İŞLEMİ
+            // ==========================================
             $("#btnExportExcel").click(function() {
-                Swal.fire('Bilgi', 'Excel aktarımı API tarafında hazırlanacak.', 'info');
+                if (!globalSurveyData) return;
+                var questions = globalSurveyData.questions || globalSurveyData.Questions || [];
+
+                // BOM ekleyerek Türkçe karakter sorununu çözer
+                var csvContent = "\uFEFF";
+
+                // Metinleri Excel için güvenli hale getiren yardımcı fonksiyon
+                function escapeCsv(text) {
+                    if (text === null || text === undefined) return '""';
+                    // İçindeki Enter karakterlerini boşlukla değiştir, varsa çift tırnakları "" yap
+                    var safeText = text.toString().replace(/\r?\n|\r/g, " ").replace(/"/g, '""');
+                    return `"${safeText}"`;
+                }
+
+                // Başlık
+                var sTitle = globalSurveyData.title || globalSurveyData.Title || "Anket";
+                csvContent += `Anket Adı:;${escapeCsv(sTitle)}\n\n`;
+
+                // Kolon Başlıkları (Türkiye'deki Excel'ler ; (noktalı virgül) sever)
+                csvContent += "Soru No;Soru Tipi;Soru Metni;Şık / Kullanıcı Cevabı;Oy (Kişi Sayısı)\n";
+
+                questions.forEach(function(q, index) {
+                    var qNo = index + 1;
+                    var qText = q.questionText || q.QuestionText || q.text || q.Text || "";
+                    var qType = q.type || q.Type;
+                    var options = q.options || q.Options || [];
+                    var textAnswers = q.textAnswers || q.TextAnswers || [];
+
+                    // Eğer Açık Uçlu Soru ise
+                    if (qType === 1 || qType === "Text") {
+                        if (textAnswers.length === 0) {
+                            csvContent += `${qNo};Açık Uçlu;${escapeCsv(qText)};"Yanıt Yok";0\n`;
+                        } else {
+                            textAnswers.forEach(function(txt) {
+                                csvContent += `${qNo};Açık Uçlu;${escapeCsv(qText)};${escapeCsv(txt)};1\n`;
+                            });
+                        }
+                    }
+                    // Çoktan Seçmeli / Checkbox İse
+                    else {
+                        var typeName = (qType === 3) ? "Çoklu Seçim" : "Tekli Seçim";
+                        if (options.length === 0) {
+                            csvContent += `${qNo};${typeName};${escapeCsv(qText)};"Şık Yok";0\n`;
+                        } else {
+                            options.forEach(function(opt) {
+                                var optText = opt.optionText || opt.OptionText || "Bilinmiyor";
+                                var count = opt.count || opt.Count || 0;
+                                csvContent += `${qNo};${typeName};${escapeCsv(qText)};${escapeCsv(optText)};${count}\n`;
+                            });
+                        }
+                    }
+
+                    // Okunabilirliği artırmak için her sorudan sonra Excel'de bir satır boşluk bırakalım
+                    csvContent += ";;;;\n";
+                });
+
+                // Dosyayı İndirtme
+                var blob = new Blob([csvContent], { type: 'text/csv;charset=utf-8;' });
+                var url = URL.createObjectURL(blob);
+                var link = document.createElement("a");
+                link.setAttribute("href", url);
+
+                // İnen dosya adını güzelleştirelim
+                var safeFileName = sTitle.substring(0, 15).replace(/[^a-z0-9]/gi, '_').toLowerCase();
+                link.setAttribute("download", `AnketRaporu_${safeFileName}.csv`);
+
+                document.body.appendChild(link);
+                link.click();
+                document.body.removeChild(link);
             });
         });
     </script>

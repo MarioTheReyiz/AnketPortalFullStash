@@ -305,7 +305,6 @@ namespace AnketPortal.API.Controllers
         [HttpGet("{id}/Results")]
         public async Task<IActionResult> GetSurveyResults(int id)
         {
-            // 1. Anketi soruları ve şıklarıyla beraber çek
             var survey = await _surveyRepo.AsQueryable()
                 .Include(s => s.Questions)
                     .ThenInclude(q => q.Options)
@@ -314,16 +313,13 @@ namespace AnketPortal.API.Controllers
             if (survey == null)
                 return NotFound(new ResultDto { Status = false, Message = "Anket bulunamadı." });
 
-            // 2. Anketin sorularının ID'lerini bir listeye al
             var questionIds = survey.Questions.Select(q => q.Id).ToList();
 
-            // 3. Bu sorulara verilmiş TÜM CEVAPLARI direkt DbContext üzerinden çek
-            // (Senin modelinde SurveyId olmadığı için, bu anketin sorularına verilen cevapları arıyoruz)
+            // Bu ankete ait tüm cevapları al
             var allAnswers = await _context.SurveyAnswers
                 .Where(a => questionIds.Contains(a.QuestionId))
                 .ToListAsync();
 
-            // 4. Frontend'in (Chart.js) beklediği formatta veriyi hazırla
             var resultData = new
             {
                 Id = survey.Id,
@@ -334,15 +330,23 @@ namespace AnketPortal.API.Controllers
                     Id = q.Id,
                     QuestionText = q.Text,
                     Type = q.Type,
+                    // Bu soruya toplam kaç kişi cevap vermiş?
+                    TotalVotes = allAnswers.Count(a => a.QuestionId == q.Id),
+
+                    // Şıklı Sorular İçin (Radio/Checkbox) Oyları Say
                     Options = q.Options.Select(o => new
                     {
                         Id = o.Id,
-                        OptionText = o.OptionText, // Senin modelindeki isimle eşleştirildi!
-
-                        // O şıkka ait cevap sayısını allAnswers listesinden hesapla
-                        // (Cevap modelindeki alanın adı SelectedOptionId olduğu için onu kullandık)
+                        // DÜZELTİLEN YER BURASI! (Sadece OptionText kullanıyoruz, olmayan Text'i sildik)
+                        OptionText = o.OptionText,
                         Count = allAnswers.Count(a => a.QuestionId == q.Id && a.SelectedOptionId == o.Id)
-                    }).ToList()
+                    }).ToList(),
+
+                    // AÇIK UÇLU SORULAR İÇİN: Yazılan metinleri liste halinde al!
+                    TextAnswers = allAnswers
+                        .Where(a => a.QuestionId == q.Id && !string.IsNullOrWhiteSpace(a.TextAnswer))
+                        .Select(a => a.TextAnswer)
+                        .ToList()
                 }).ToList()
             };
 
