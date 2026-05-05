@@ -10,229 +10,141 @@
             <span id="lblSurveyTitle">Rapor Yükleniyor...</span>
         </h1>
         <div>
-            <!-- EXCEL İNDİR BUTONU -->
             <button id="btnExportExcel" class="btn btn-sm btn-success shadow-sm me-2 d-none">
                 <i class="fa-solid fa-file-excel me-1"></i> Sonuçları İndir (Excel)
             </button>
             <a href="/Survey/Index" class="btn btn-sm btn-secondary shadow-sm">
-                <i class="fa-solid fa-arrow-left fa-sm text-white-50"></i> Anketlere Dön
+                <i class="fa-solid fa-arrow-left me-1"></i> Geri
             </a>
         </div>
     </div>
 
-    <!-- GRAFİKLER VE LİSTELER ALANI -->
-    <div class="row" id="chartsContainer">
-        <div class="col-12 text-center py-5" id="loadingDiv">
-            <i class="fas fa-spinner fa-spin fa-3x text-primary mb-3"></i>
-            <h5 class="text-muted">Raporlar Derleniyor...</h5>
+    <!-- SEKMELER -->
+    <ul class="nav nav-pills mb-4 shadow-sm p-2 bg-white rounded-pill" id="reportTabs" role="tablist">
+        <li class="nav-item" role="presentation">
+            <button class="nav-link active rounded-pill px-4 fw-bold" id="stats-tab" data-bs-toggle="pill" data-bs-target="#stats-content" type="button" role="tab">Genel İstatistikler</button>
+        </li>
+        <li class="nav-item" role="presentation">
+            <button class="nav-link rounded-pill px-4 fw-bold" id="participants-tab" data-bs-toggle="pill" data-bs-target="#participants-content" type="button" role="tab">Katılımcı Detayları</button>
+        </li>
+    </ul>
+
+    <div class="tab-content" id="reportTabsContent">
+        <!-- 1. SEKME: İSTATİSTİKLER -->
+        <div class="tab-pane fade show active" id="stats-content" role="tabpanel">
+            <div class="row" id="chartsContainer">
+                <div class="col-12 text-center py-5">
+                    <i class="fas fa-spinner fa-spin fa-3x text-primary mb-3"></i>
+                    <h5 class="text-muted">Analiz ediliyor...</h5>
+                </div>
+            </div>
+        </div>
+
+        <!-- 2. SEKME: KATILIMCILAR -->
+        <div class="tab-pane fade" id="participants-content" role="tabpanel">
+            <div class="card shadow border-0 rounded-4">
+                <div class="card-body p-4">
+                    <div class="row">
+                        <div class="col-md-4 border-end">
+                            <h6 class="fw-bold text-primary mb-3 border-bottom pb-2">Katılımcı Listesi</h6>
+                            <div class="list-group list-group-flush" id="userListGroup" style="max-height: 500px; overflow-y:auto;">
+                                <!-- Kullanıcılar buraya gelecek -->
+                            </div>
+                        </div>
+                        <div class="col-md-8">
+                            <h6 class="fw-bold text-primary mb-3 border-bottom pb-2">Cevap Kağıdı</h6>
+                            <div id="userDetailsArea">
+                                <div class="text-center text-muted py-5">Soldan bir kullanıcı seçerek cevaplarını inceleyin.</div>
+                            </div>
+                        </div>
+                    </div>
+                </div>
+            </div>
         </div>
     </div>
 </div>
 
 @section Scripts {
     <script src="https://cdn.jsdelivr.net/npm/chart.js"></script>
-
     <script>
         $(document).ready(function () {
-            var pathArray = window.location.pathname.split('/');
-            var surveyId = pathArray[pathArray.length - 1];
+            var surveyId = window.location.pathname.split('/').pop();
             var token = localStorage.getItem("token");
             var globalSurveyData = null;
 
-            if (!token) {
-                window.location.replace("/Auth/Login");
-                return;
+            // 1. İSTATİSTİKLERİ YÜKLE
+            function loadStats() {
+                $.ajax({
+                    url: `https://localhost:7094/api/Survey/${surveyId}/Results`,
+                    type: "GET",
+                    headers: { "Authorization": "Bearer " + token },
+                    success: function (res) {
+                        $("#chartsContainer").empty();
+                        globalSurveyData = res.data;
+                        $("#lblSurveyTitle").text(globalSurveyData.title + " Raporu");
+                        $("#btnExportExcel").removeClass("d-none");
+
+                        globalSurveyData.questions.forEach((q, i) => {
+                            if (q.type !== 1) { // Şıklı soruları çiz
+                                var card = `<div class="col-xl-6 mb-4"><div class="card shadow-sm border-0 rounded-4"><div class="card-header bg-white border-0 pt-4"><h6 class="fw-bold text-primary">Soru ${i+1}: ${q.questionText}</h6></div><div class="card-body" style="height:300px;"><canvas id="chart_${i}"></canvas></div></div></div>`;
+                                $("#chartsContainer").append(card);
+
+                                new Chart(document.getElementById(`chart_${i}`).getContext('2d'), {
+                                    type: 'bar',
+                                    data: {
+                                        labels: q.options.map(o => o.optionText),
+                                        datasets: [{ label: 'Oy', data: q.options.map(o => o.count), backgroundColor: '#4e73df', borderRadius: 5 }]
+                                    },
+                                    options: { responsive: true, maintainAspectRatio: false, plugins: { legend: { display: false } } }
+                                });
+                            }
+                        });
+                    }
+                });
             }
 
-            // API'DEN VERİYİ ÇEK
-            $.ajax({
-                url: "https://localhost:7094/api/Survey/" + surveyId + "/Results",
-                type: "GET",
-                headers: { "Authorization": "Bearer " + token },
-                success: function (res) {
-                    $("#loadingDiv").remove();
+            // 2. KATILIMCILARI YÜKLE
+            $("#participants-tab").one('click', function() {
+                $.ajax({
+                    url: `https://localhost:7094/api/Survey/${surveyId}/Participants`,
+                    type: "GET",
+                    headers: { "Authorization": "Bearer " + token },
+                    success: function(res) {
+                        var list = $("#userListGroup");
+                        list.empty();
+                        res.data.forEach(u => {
+                            list.append(`<button type="button" class="list-group-item list-group-item-action user-item py-3 border-bottom" data-id="${u.id}"><div class="fw-bold">${u.fullName || u.userName}</div><small class="text-muted">${u.email}</small></button>`);
+                        });
 
-                    globalSurveyData = res.data ? res.data : (res.Data ? res.Data : res);
-
-                    if (!globalSurveyData) {
-                        Swal.fire('Hata', 'Rapor verisi bulunamadı.', 'error');
-                        return;
+                        $(".user-item").click(function() {
+                            $(".user-item").removeClass("active bg-primary text-white");
+                            $(this).addClass("active bg-primary text-white");
+                            loadUserAnswers($(this).data("id"));
+                        });
                     }
-
-                    var questions = globalSurveyData.questions || globalSurveyData.Questions || [];
-                    var surveyTitle = (globalSurveyData.title || globalSurveyData.Title || "Anket") + " Raporu";
-
-                    $("#lblSurveyTitle").text(surveyTitle);
-
-                    if (!questions || questions.length === 0) {
-                        $("#chartsContainer").html('<div class="col-12"><div class="alert alert-warning text-center">Bu anket için henüz soru veya yanıt bulunmuyor.</div></div>');
-                        return;
-                    }
-
-                    $("#btnExportExcel").removeClass("d-none");
-
-                    // SORULARI DÖN VE EKRANA BAS
-                    questions.forEach(function (q, index) {
-                        var qText = q.questionText || q.QuestionText || q.text || q.Text || "Soru " + (index + 1);
-                        var qType = q.type || q.Type;
-                        var options = q.options || q.Options || [];
-                        var textAnswers = q.textAnswers || q.TextAnswers || [];
-                        var totalVotes = q.totalVotes || q.TotalVotes || 0;
-
-                        var questionCard = `
-                            <div class="col-xl-6 col-lg-12 mb-4">
-                                <div class="card shadow-sm border-0 h-100 rounded-4">
-                                    <div class="card-header bg-white border-bottom-0 pt-4 pb-0">
-                                        <h5 class="fw-bold text-primary mb-1">Soru ${index + 1}</h5>
-                                        <p class="text-dark fs-5 mb-0">${qText}</p>
-                                    </div>
-                                    <div class="card-body d-flex flex-column" id="cardBody_${index}">
-                                    </div>
-                                </div>
-                            </div>
-                        `;
-                        $("#chartsContainer").append(questionCard);
-                        var cardBody = $(`#cardBody_${index}`);
-
-                        // AÇIK UÇLU SORUYSA
-                        if (qType === 1 || qType === "Text") {
-                            var htmlList = `<div class="alert alert-primary bg-opacity-10 border-0 text-primary fw-bold py-2 px-3 mb-3"><i class="fa-solid fa-users me-2"></i> Toplam ${totalVotes} kişi metin yanıtı bıraktı.</div>`;
-
-                            if (textAnswers.length === 0) {
-                                htmlList += '<div class="text-muted text-center py-4"><i class="fa-solid fa-comment-slash fa-2x mb-2"></i><br>Henüz yanıt yok.</div>';
-                            } else {
-                                htmlList += '<div class="list-group list-group-flush rounded-3 shadow-sm" style="max-height: 250px; overflow-y: auto;">';
-                                textAnswers.forEach(function(txt) {
-                                    htmlList += `<div class="list-group-item list-group-item-action border-bottom py-3">
-                                                    <i class="fa-solid fa-quote-left text-primary opacity-50 me-2"></i> ${txt}
-                                                 </div>`;
-                                });
-                                htmlList += '</div>';
-                            }
-                            cardBody.html(htmlList);
-                        }
-                        // ÇOKTAN SEÇMELİ / CHECKBOX İSE
-                        else {
-                            cardBody.html(`
-                                <div class="alert alert-success bg-opacity-10 border-0 text-success fw-bold py-2 px-3 mb-3"><i class="fa-solid fa-chart-bar me-2"></i> Toplam ${totalVotes} oy kullanıldı.</div>
-                                <div class="chart-container flex-grow-1" style="position: relative; min-height: 250px; width:100%">
-                                    <canvas id="chart_${index}"></canvas>
-                                </div>
-                            `);
-
-                            var labels = [];
-                            var counts = [];
-                            var bgColors = ['#4e73df', '#1cc88a', '#36b9cc', '#f6c23e', '#e74a3b', '#858796', '#5a5c69', '#2e59d9'];
-
-                            options.forEach(function (opt) {
-                                labels.push(opt.optionText || opt.OptionText || "Şık");
-                                counts.push(opt.count || opt.Count || 0);
-                            });
-
-                            var isAllZero = counts.every(item => item === 0);
-                            var ctx = document.getElementById(`chart_${index}`).getContext('2d');
-                            new Chart(ctx, {
-                                type: 'bar',
-                                data: {
-                                    labels: labels,
-                                    datasets: [{
-                                        label: 'Oy Sayısı',
-                                        data: counts,
-                                        backgroundColor: bgColors.slice(0, labels.length),
-                                        borderWidth: 0,
-                                        borderRadius: 6
-                                    }]
-                                },
-                                options: {
-                                    responsive: true,
-                                    maintainAspectRatio: false,
-                                    plugins: { legend: { display: false } },
-                                    scales: { y: { beginAtZero: true, ticks: { precision: 0 } } }
-                                }
-                            });
-                        }
-                    });
-                },
-                error: function () {
-                    $("#loadingDiv").remove();
-                    Swal.fire('Hata', 'Raporlar çekilemedi.', 'error');
-                }
-            });
-
-            // ==========================================
-            // MÜKEMMELLEŞTİRİLMİŞ EXCEL İNDİRME İŞLEMİ
-            // ==========================================
-            $("#btnExportExcel").click(function() {
-                if (!globalSurveyData) return;
-                var questions = globalSurveyData.questions || globalSurveyData.Questions || [];
-
-                // BOM ekleyerek Türkçe karakter sorununu çözer
-                var csvContent = "\uFEFF";
-
-                // Metinleri Excel için güvenli hale getiren yardımcı fonksiyon
-                function escapeCsv(text) {
-                    if (text === null || text === undefined) return '""';
-                    // İçindeki Enter karakterlerini boşlukla değiştir, varsa çift tırnakları "" yap
-                    var safeText = text.toString().replace(/\r?\n|\r/g, " ").replace(/"/g, '""');
-                    return `"${safeText}"`;
-                }
-
-                // Başlık
-                var sTitle = globalSurveyData.title || globalSurveyData.Title || "Anket";
-                csvContent += `Anket Adı:;${escapeCsv(sTitle)}\n\n`;
-
-                // Kolon Başlıkları (Türkiye'deki Excel'ler ; (noktalı virgül) sever)
-                csvContent += "Soru No;Soru Tipi;Soru Metni;Şık / Kullanıcı Cevabı;Oy (Kişi Sayısı)\n";
-
-                questions.forEach(function(q, index) {
-                    var qNo = index + 1;
-                    var qText = q.questionText || q.QuestionText || q.text || q.Text || "";
-                    var qType = q.type || q.Type;
-                    var options = q.options || q.Options || [];
-                    var textAnswers = q.textAnswers || q.TextAnswers || [];
-
-                    // Eğer Açık Uçlu Soru ise
-                    if (qType === 1 || qType === "Text") {
-                        if (textAnswers.length === 0) {
-                            csvContent += `${qNo};Açık Uçlu;${escapeCsv(qText)};"Yanıt Yok";0\n`;
-                        } else {
-                            textAnswers.forEach(function(txt) {
-                                csvContent += `${qNo};Açık Uçlu;${escapeCsv(qText)};${escapeCsv(txt)};1\n`;
-                            });
-                        }
-                    }
-                    // Çoktan Seçmeli / Checkbox İse
-                    else {
-                        var typeName = (qType === 3) ? "Çoklu Seçim" : "Tekli Seçim";
-                        if (options.length === 0) {
-                            csvContent += `${qNo};${typeName};${escapeCsv(qText)};"Şık Yok";0\n`;
-                        } else {
-                            options.forEach(function(opt) {
-                                var optText = opt.optionText || opt.OptionText || "Bilinmiyor";
-                                var count = opt.count || opt.Count || 0;
-                                csvContent += `${qNo};${typeName};${escapeCsv(qText)};${escapeCsv(optText)};${count}\n`;
-                            });
-                        }
-                    }
-
-                    // Okunabilirliği artırmak için her sorudan sonra Excel'de bir satır boşluk bırakalım
-                    csvContent += ";;;;\n";
                 });
-
-                // Dosyayı İndirtme
-                var blob = new Blob([csvContent], { type: 'text/csv;charset=utf-8;' });
-                var url = URL.createObjectURL(blob);
-                var link = document.createElement("a");
-                link.setAttribute("href", url);
-
-                // İnen dosya adını güzelleştirelim
-                var safeFileName = sTitle.substring(0, 15).replace(/[^a-z0-9]/gi, '_').toLowerCase();
-                link.setAttribute("download", `AnketRaporu_${safeFileName}.csv`);
-
-                document.body.appendChild(link);
-                link.click();
-                document.body.removeChild(link);
             });
+
+            // 3. KULLANICI CEVAPLARINI YÜKLE
+            function loadUserAnswers(userId) {
+                $("#userDetailsArea").html('<div class="text-center py-5"><i class="fas fa-spinner fa-spin fa-2x"></i></div>');
+                $.ajax({
+                    url: `https://localhost:7094/api/Survey/${surveyId}/ParticipantDetails/${userId}`,
+                    type: "GET",
+                    headers: { "Authorization": "Bearer " + token },
+                    success: function(res) {
+                        var html = '<div class="accordion" id="answersAccordion">';
+                        res.data.forEach((ans, i) => {
+                            var cevap = ans.selectedOption || ans.answerText || '<span class="text-danger">Boş Bırakılmış</span>';
+                            html += `<div class="accordion-item mb-2 border rounded shadow-sm"><h2 class="accordion-header"><button class="accordion-button collapsed fw-bold small" type="button" data-bs-toggle="collapse" data-bs-target="#ans_${i}">${ans.questionText}</button></h2><div id="ans_${i}" class="accordion-collapse collapse"><div class="accordion-body bg-light"><strong>Cevap:</strong> ${cevap}</div></div></div>`;
+                        });
+                        html += '</div>';
+                        $("#userDetailsArea").html(html);
+                    }
+                });
+            }
+
+            loadStats(); // İlk açılışta istatistikleri yükle
         });
     </script>
 }

@@ -7,6 +7,8 @@
         public string? ImageUrl { get; set; } // Şık fotoğrafı
         public int Order { get; set; }
 
+        public int? NextQuestionId { get; set; } // Bu şık seçilirse hangi soruya atlasın?
+
 
         public int QuestionId { get; set; }
         public Question Question { get; set; } = null!;

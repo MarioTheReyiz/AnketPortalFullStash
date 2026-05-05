@@ -1,0 +1,98 @@
+﻿@{
+    ViewData["Title"] = "Değerlendirmeler";
+    Layout = "~/Views/Shared/_Layout.cshtml"; // Admin sol menü paneli
+}
+
+<div class="container-fluid mt-4">
+    <div class="d-sm-flex align-items-center justify-content-between mb-4">
+        <h1 class="h3 mb-0 text-gray-800 fw-bold">
+            <i class="fa-solid fa-star text-warning me-2"></i>Kullanıcı Değerlendirmeleri
+        </h1>
+    </div>
+
+    <div class="card shadow border-0 rounded-4">
+        <div class="card-body p-4">
+            <div class="table-responsive">
+                <table class="table table-hover align-middle" id="reviewsTable" width="100%" cellspacing="0">
+                    <thead class="table-light text-muted">
+                        <tr>
+                            <th style="width: 15%">Tarih</th>
+                            <th style="width: 20%">Kullanıcı</th>
+                            <th style="width: 15%">Puan (Yıldız)</th>
+                            <th style="width: 50%">Yorum</th>
+                        </tr>
+                    </thead>
+                    <tbody id="reviewsBody">
+                        <tr>
+                            <td colspan="4" class="text-center py-4">
+                                <i class="fas fa-spinner fa-spin text-primary fs-4"></i> Yükleniyor...
+                            </td>
+                        </tr>
+                    </tbody>
+                </table>
+            </div>
+        </div>
+    </div>
+</div>
+
+@section Scripts {
+    <script>
+        $(document).ready(function () {
+            var token = localStorage.getItem("token");
+
+            if (!token) {
+                window.location.replace("/Auth/Login");
+                return;
+            }
+
+            $.ajax({
+                url: "https://localhost:7094/api/Review", // Backend'deki API yolumuz
+                type: "GET",
+                headers: { "Authorization": "Bearer " + token },
+                success: function (res) {
+                    var tbody = $("#reviewsBody");
+                    tbody.empty();
+
+                    if (!res.data || res.data.length === 0) {
+                        tbody.html('<tr><td colspan="4" class="text-center text-muted py-4">Henüz hiç değerlendirme yapılmamış.</td></tr>');
+                        return;
+                    }
+
+                    res.data.forEach(function (review) {
+                        // Yıldızları HTML'e çevirme mantığı
+                        var starsHtml = "";
+                        for (var i = 1; i <= 5; i++) {
+                            if (i <= review.starCount) {
+                                starsHtml += '<i class="fa-solid fa-star text-warning"></i> ';
+                            } else {
+                                starsHtml += '<i class="fa-regular fa-star text-warning"></i> ';
+                            }
+                        }
+
+                        var commentHtml = review.comment ? review.comment : '<span class="text-muted fst-italic">Yorum yazılmamış.</span>';
+
+                        var row = `
+                            <tr>
+                                <td><span class="badge bg-secondary opacity-75">${review.date}</span></td>
+                                <td class="fw-bold">${review.userName}</td>
+                                <td>${starsHtml}</td>
+                                <td>${commentHtml}</td>
+                            </tr>
+                        `;
+                        tbody.append(row);
+                    });
+
+                    // Datatable aktifleştir
+                    $('#reviewsTable').DataTable({
+                        "language": {
+                            "url": "https://cdn.datatables.net/plug-ins/1.13.6/i18n/tr.json"
+                        }
+                    });
+                },
+                error: function () {
+                    Swal.fire('Hata!', 'Değerlendirmeler çekilirken bir hata oluştu.', 'error');
+                }
+            });
+        });
+    </script>
+}

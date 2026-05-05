@@ -5,17 +5,17 @@
 
 <div class="container mt-4">
     <div class="d-flex justify-content-between align-items-center mb-4">
-        <h2 class="h4 text-gray-800"><i class="fa-solid fa-list-check text-primary me-2"></i> Soru Yönetimi</h2>
+        <h2 class="h4 text-gray-800 fw-bold"><i class="fa-solid fa-list-check text-primary me-2"></i> Soru Yönetimi</h2>
         <div>
-            <a href="/Survey/Index" class="btn btn-outline-secondary btn-sm me-2"><i class="fa fa-arrow-left"></i> Geri Dön</a>
-            <button class="btn btn-primary btn-sm" id="btnOpenAddModal">
+            <a href="/Survey/Index" class="btn btn-outline-secondary btn-sm me-2 shadow-sm"><i class="fa fa-arrow-left"></i> Geri Dön</a>
+            <button class="btn btn-primary btn-sm shadow" id="btnOpenAddModal">
                 <i class="fa fa-plus"></i> Yeni Soru Ekle
             </button>
         </div>
     </div>
 
-    <div class="card shadow border-left-primary">
-        <div class="card-body" id="questionsList">
+    <div class="card shadow border-0 rounded-4">
+        <div class="card-body p-0" id="questionsList">
             <div class="text-center p-5">
                 <i class="fas fa-spinner fa-spin fa-2x text-primary mb-2"></i><br>
                 Sorular Yükleniyor...
@@ -24,30 +24,30 @@
     </div>
 </div>
 
-<!-- MODAL -->
+<!-- SORU EKLEME/DÜZENLEME MODALI -->
 <div class="modal fade" id="questionModal" tabindex="-1" data-bs-backdrop="static">
     <div class="modal-dialog modal-lg">
-        <div class="modal-content">
-            <div class="modal-header bg-primary text-white">
-                <h5 class="modal-title" id="modalTitle">Yeni Soru Ekle</h5>
+        <div class="modal-content rounded-4 border-0">
+            <div class="modal-header bg-primary text-white border-0">
+                <h5 class="modal-title fw-bold" id="modalTitle">Yeni Soru Ekle</h5>
                 <button type="button" class="btn-close btn-close-white" data-bs-dismiss="modal"></button>
             </div>
-            <div class="modal-body">
+            <div class="modal-body p-4">
                 <form id="frmQuestion" onsubmit="return false;">
                     <input type="hidden" id="hdnSurveyId" value="@surveyId" />
                     <input type="hidden" id="hdnQuestionId" value="0" />
 
                     <div class="mb-3">
                         <label class="form-label fw-bold">Soru Metni</label>
-                        <input type="text" class="form-control" id="txtQuestionText" placeholder="Sorduğunuz soruyu buraya yazın..." required>
+                        <input type="text" class="form-control form-control-lg fs-6" id="txtQuestionText" placeholder="Örn: Hizmetimizden memnun kaldınız mı?" required>
                     </div>
 
                     <div class="mb-3">
-                        <label class="form-label small text-muted fw-bold">Soru Görsel/Video URL (Opsiyonel)</label>
-                        <input type="text" class="form-control form-control-sm" id="txtMediaUrl" placeholder="https://... (Resim veya YouTube linki)">
+                        <label class="form-label small text-muted fw-bold">Medya URL (Resim veya YouTube - Opsiyonel)</label>
+                        <input type="text" class="form-control form-control-sm" id="txtMediaUrl" placeholder="https://...">
                     </div>
 
-                    <div class="row mb-3">
+                    <div class="row mb-4">
                         <div class="col-md-6">
                             <label class="form-label fw-bold">Soru Tipi</label>
                             <select class="form-select" id="cbQuestionType">
@@ -59,25 +59,30 @@
                         <div class="col-md-6 d-flex align-items-end pb-1">
                             <div class="form-check form-switch fs-5">
                                 <input class="form-check-input" type="checkbox" id="chkIsRequired" checked style="cursor:pointer;">
-                                <label class="form-check-label ms-2 fs-6">Bu soru zorunlu mu?</label>
+                                <label class="form-check-label ms-2 fs-6">Zorunlu Soru</label>
                             </div>
                         </div>
                     </div>
 
-                    <div id="optionsArea" style="display:none;" class="p-3 bg-light border rounded text-center">
+                    <div id="optionsArea" style="display:none;" class="p-3 bg-light border rounded-4">
                         <div class="d-flex justify-content-between align-items-center mb-3">
-                            <label class="form-label fw-bold mb-0 text-primary"><i class="fa fa-list"></i> Şıklar ve Görselleri</label>
-                            <button type="button" class="btn btn-sm btn-success" id="btnAddOption">
-                                <i class="fa fa-plus"></i> Şık Ekle
+                            <label class="form-label fw-bold mb-0 text-primary"><i class="fa fa-list-ul me-2"></i>Seçenekler ve Akıllı Atlama</label>
+                            <button type="button" class="btn btn-sm btn-success rounded-pill px-3" id="btnAddOption">
+                                <i class="fa fa-plus me-1"></i> Şık Ekle
                             </button>
                         </div>
-                        <div id="optionsContainer"></div>
+                        <div id="optionsContainer">
+                            <!-- Şıklar buraya gelecek -->
+                        </div>
+                        <div class="small text-muted mt-2">
+                            <i class="fa-solid fa-circle-info me-1"></i> "Hedef Soru", bu şık seçildiğinde kullanıcının atlayacağı soruyu belirler.
+                        </div>
                     </div>
                 </form>
             </div>
-            <div class="modal-footer">
-                <button type="button" class="btn btn-secondary" data-bs-dismiss="modal">İptal</button>
-                <button type="button" class="btn btn-primary" id="btnSaveQuestion">Kaydet</button>
+            <div class="modal-footer border-0 bg-light rounded-bottom-4">
+                <button type="button" class="btn btn-secondary px-4 rounded-pill" data-bs-dismiss="modal">İptal</button>
+                <button type="button" class="btn btn-primary px-5 rounded-pill fw-bold shadow" id="btnSaveQuestion">Kaydet</button>
             </div>
         </div>
     </div>
@@ -86,119 +91,87 @@
 @section Scripts {
     <script>
         var allQuestions = [];
+        var surveyId = $("#hdnSurveyId").val();
 
-        // Token okuma fonksiyonları
         function getToken() { return localStorage.getItem("token"); }
-        function getRefreshToken() { return localStorage.getItem("refreshToken"); }
 
         $(document).ready(function () {
             loadQuestions();
 
-            // REFRESH TOKEN SİSTEMİ
-            function attemptRefreshToken(callbackDataFunction) {
-                var currentRefreshToken = getRefreshToken();
-                if (!currentRefreshToken) {
-                    window.location.href = "/Auth/Login";
-                    return;
-                }
-
-                // DİKKAT: Artık C# tarafındaki DTO'ya uygun JSON gönderiyoruz
-                var payload = { RefreshToken: currentRefreshToken };
-
-                $.ajax({
-                    url: "https://localhost:7094/api/Auth/RefreshToken",
-                    type: "POST",
-                    contentType: "application/json",
-                    data: JSON.stringify(payload),
-                    success: function (res) {
-                        if (res.status) {
-                            var newAccessToken = res.data.accessToken || res.data.AccessToken;
-                            var newRefreshToken = res.data.refreshToken || res.data.RefreshToken;
-
-                            localStorage.setItem("token", newAccessToken);
-                            localStorage.setItem("refreshToken", newRefreshToken);
-
-                            console.log("Token yenilendi, işlem tekrarlanıyor.");
-                            callbackDataFunction(); // Patlayan işlemi tekrar çağır
-                        } else {
-                            window.location.href = "/Auth/Login";
-                        }
-                    },
-                    error: function () {
-                        // Refresh token isteği de patlarsa Login'e at
-                        window.location.href = "/Auth/Login";
-                    }
-                });
-            }
-
+            // 1. SORULARI LİSTELEME
             function loadQuestions() {
-                var surveyId = $("#hdnSurveyId").val();
                 $.ajax({
                     url: "https://localhost:7094/api/Question/GetBySurvey/" + surveyId,
                     type: "GET",
                     headers: { "Authorization": "Bearer " + getToken() },
                     success: function (res) {
-                        if (res.status) {
-                            allQuestions = res.data || res.Data || [];
-                            var html = "";
+                        allQuestions = res.data || [];
+                        var html = "";
 
-                            if (allQuestions.length > 0) {
-                                allQuestions.forEach(function (q, index) {
-                                    var typeName = q.type == 1 ? "Metin" : (q.type == 2 ? "Radio" : "Checkbox");
-                                    var requiredBadge = q.isRequired ? '<span class="badge bg-danger ms-2">Zorunlu</span>' : '';
+                        if (allQuestions.length > 0) {
+                            allQuestions.forEach(function (q, index) {
+                                var typeIcon = q.type == 1 ? "fa-align-left" : (q.type == 2 ? "fa-circle-dot" : "fa-square-check");
+                                var requiredBadge = q.isRequired ? '<span class="badge bg-danger ms-2">Zorunlu</span>' : '';
 
-                                    html += `
-                                    <div class="card mb-4 shadow-sm border-left-info">
-                                        <div class="card-body">
-                                            <div class="d-flex justify-content-between align-items-start">
-                                                <div>
-                                                    <h5 class="fw-bold mb-1">${index + 1}. ${q.text} ${requiredBadge}</h5>
-                                                    <span class="badge bg-secondary mb-2">${typeName}</span>
-                                                </div>
-                                                <div>
-                                                    <button class="btn btn-sm btn-outline-warning btn-edit-question me-1" data-id="${q.id}"><i class="fa fa-pen"></i></button>
-                                                    <button class="btn btn-sm btn-outline-danger btn-delete-question" data-id="${q.id}"><i class="fa fa-trash"></i></button>
-                                                </div>
-                                            </div>`;
-
-                                    if (q.mediaUrl) {
-                                        if (q.mediaUrl.includes("youtube.com") || q.mediaUrl.includes("youtu.be")) {
-                                            var vidId = q.mediaUrl.includes('v=') ? q.mediaUrl.split('v=')[1].split('&')[0] : q.mediaUrl.split('/').pop();
-                                            html += `<div class="ratio ratio-16x9 my-3 shadow-sm rounded overflow-hidden" style="max-width:450px">
-                                                        <iframe src="https://www.youtube.com/embed/${vidId}" allowfullscreen></iframe>
-                                                     </div>`;
-                                        } else {
-                                            html += `<img src="${q.mediaUrl}" class="img-fluid rounded my-3 shadow-sm border" style="max-height:250px; display:block;">`;
-                                        }
-                                    }
-
-                                    if (q.type != 1) {
-                                        html += `<div class="row row-cols-1 row-cols-md-2 g-2 mt-2">`;
-                                        var opts = q.options || q.Options || [];
-                                        opts.forEach(opt => {
-                                            var imgTag = opt.imageUrl ? `<img src="${opt.imageUrl}" class="rounded me-2 shadow-sm" style="width:35px;height:35px;object-fit:cover;border:1px solid #eee;">` : `<i class="fa-regular fa-circle text-muted me-2"></i>`;
-                                            html += `<div class="col"><div class="p-2 border rounded bg-white d-flex align-items-center">${imgTag} <span class="small">${opt.optionText}</span></div></div>`;
-                                        });
-                                        html += `</div>`;
-                                    }
-                                    html += `</div></div>`;
-                                });
-                            } else {
-                                html = '<p class="text-center text-muted my-5">Bu ankete henüz soru eklenmemiş.</p>';
-                            }
-                            $("#questionsList").html(html);
-                        }
-                    },
-                    error: function(xhr) {
-                        if (xhr.status === 401) {
-                            attemptRefreshToken(loadQuestions);
+                                html += `
+                                <div class="p-4 border-bottom question-item">
+                                    <div class="d-flex justify-content-between align-items-start">
+                                        <div class="flex-grow-1">
+                                            <h5 class="fw-bold mb-1">${index + 1}. ${q.text} ${requiredBadge}</h5>
+                                            <span class="small text-muted"><i class="fa-solid ${typeIcon} me-1"></i> ${q.type==1?'Metin':q.type==2?'Tek Seçim':'Çoklu Seçim'}</span>
+                                        </div>
+                                        <div class="ms-3 d-flex">
+                                            <button class="btn btn-sm btn-light border btn-edit-question me-1" data-id="${q.id}" title="Düzenle"><i class="fa fa-pen text-warning"></i></button>
+                                            <button class="btn btn-sm btn-light border btn-delete-question" data-id="${q.id}" title="Sil"><i class="fa fa-trash text-danger"></i></button>
+                                        </div>
+                                    </div>
+                                    ${q.mediaUrl ? `<div class="mt-2"><small class="text-truncate d-block" style="max-width:300px"><i class="fa fa-link me-1"></i>${q.mediaUrl}</small></div>` : ''}
+                                </div>`;
+                            });
                         } else {
-                            $("#questionsList").html('<div class="alert alert-danger text-center">Sorular yüklenirken bir hata oluştu. (Hata: ' + xhr.status + ')</div>');
+                            html = '<div class="text-center p-5 text-muted">Henüz soru eklenmemiş. "Yeni Soru Ekle" butonu ile başlayın.</div>';
                         }
+                        $("#questionsList").html(html);
                     }
                 });
             }
 
+            // 2. ŞIK EKLEME FONKSİYONU (Skip Logic Destekli)
+            function addOptionInput(text = "", img = "", nextQId = null) {
+                // Mevcut soruları bir select'e doldur (Skip Logic için)
+                var skipOptions = `<option value="">Sıradaki Soru (Varsayılan)</option>`;
+                allQuestions.forEach(function(item) {
+                    // Mevcut soruyu listeden çıkarabiliriz (loop olmasın diye) ama basitlik için hepsini ekliyoruz
+                    var selected = (nextQId && nextQId == item.id) ? "selected" : "";
+                    skipOptions += `<option value="${item.id}" ${selected}>${item.text.substring(0, 40)}...</option>`;
+                });
+
+                var html = `
+                    <div class="option-row bg-white border rounded-3 p-3 mb-3 shadow-sm">
+                        <div class="row g-2">
+                            <div class="col-md-7">
+                                <label class="small fw-bold text-muted mb-1">Şık Metni</label>
+                                <input type="text" class="form-control form-control-sm option-input" placeholder="Seçenek metni..." value="${text}">
+                            </div>
+                            <div class="col-md-5 text-end">
+                                <button class="btn btn-sm btn-link text-danger btn-remove-option mt-3 p-0" type="button"><i class="fa fa-trash me-1"></i>Sil</button>
+                            </div>
+                            <div class="col-md-6">
+                                <label class="small fw-bold text-muted mb-1">Görsel URL (Opsiyonel)</label>
+                                <input type="text" class="form-control form-control-sm option-image-input" placeholder="https://..." value="${img}">
+                            </div>
+                            <div class="col-md-6">
+                                <label class="small fw-bold text-primary mb-1"><i class="fa-solid fa-shuffle me-1"></i>Hedef Soru (Skip Logic)</label>
+                                <select class="form-select form-select-sm next-question-select">
+                                    ${skipOptions}
+                                </select>
+                            </div>
+                        </div>
+                    </div>`;
+                $("#optionsContainer").append(html);
+            }
+
+            // 3. MODAL İŞLEMLERİ
             $("#btnOpenAddModal").click(function () {
                 $("#hdnQuestionId").val("0");
                 $("#modalTitle").text("Yeni Soru Ekle");
@@ -219,10 +192,11 @@
                     $("#cbQuestionType").val(q.type);
                     $("#chkIsRequired").prop("checked", q.isRequired);
                     $("#optionsContainer").empty();
+
                     if (q.type != 1) {
                         $("#optionsArea").show();
                         var opts = q.options || q.Options || [];
-                        opts.forEach(opt => addOptionInput(opt.optionText, opt.imageUrl));
+                        opts.forEach(opt => addOptionInput(opt.optionText, opt.imageUrl, opt.nextQuestionId));
                     }
                     $("#questionModal").modal("show");
                 }
@@ -230,39 +204,42 @@
 
             $("#cbQuestionType").change(function () {
                 if ($(this).val() == "1") { $("#optionsArea").hide(); $("#optionsContainer").empty(); }
-                else { $("#optionsArea").show(); if ($("#optionsContainer .option-row").length === 0) { addOptionInput(); addOptionInput(); } }
+                else {
+                    $("#optionsArea").show();
+                    if ($("#optionsContainer .option-row").length === 0) {
+                        addOptionInput(); addOptionInput();
+                    }
+                }
             });
 
             $("#btnAddOption").click(function() { addOptionInput(); });
-
-            function addOptionInput(text = "", img = "") {
-                var html = `
-                    <div class="option-row border rounded p-2 mb-2 bg-white shadow-sm">
-                        <div class="input-group mb-1">
-                            <input type="text" class="form-control form-control-sm option-input" placeholder="Şık metni..." value="${text}">
-                            <button class="btn btn-sm btn-outline-danger btn-remove-option" type="button"><i class="fa fa-trash"></i></button>
-                        </div>
-                        <input type="text" class="form-control form-control-sm option-image-input" placeholder="Görsel URL (Opsiyonel)" value="${img || ""}">
-                    </div>`;
-                $("#optionsContainer").append(html);
-            }
-
             $(document).on("click", ".btn-remove-option", function () { $(this).closest(".option-row").remove(); });
 
+            // 4. KAYDETME (AJAX)
             $("#btnSaveQuestion").click(function () {
                 var qId = parseInt($("#hdnQuestionId").val());
                 var options = [];
+
                 if ($("#cbQuestionType").val() != "1") {
                     $(".option-row").each(function (i) {
                         var txt = $(this).find(".option-input").val().trim();
                         var img = $(this).find(".option-image-input").val().trim();
-                        if (txt !== "") options.push({ OptionText: txt, ImageUrl: img, Order: i + 1 });
+                        var nextQ = $(this).find(".next-question-select").val();
+
+                        if (txt !== "") {
+                            options.push({
+                                OptionText: txt,
+                                ImageUrl: img,
+                                Order: i + 1,
+                                NextQuestionId: nextQ !== "" ? parseInt(nextQ) : null // SKIP LOGIC VERİSİ
+                            });
+                        }
                     });
                 }
 
                 var payload = {
                     Id: qId,
-                    SurveyId: parseInt($("#hdnSurveyId").val()),
+                    SurveyId: parseInt(surveyId),
                     Text: $("#txtQuestionText").val(),
                     MediaUrl: $("#txtMediaUrl").val(),
                     Type: parseInt($("#cbQuestionType").val()),
@@ -270,55 +247,63 @@
                     Options: options
                 };
 
-                var method = qId > 0 ? "PUT" : "POST";
                 var url = qId > 0 ? "https://localhost:7094/api/Question/UpdateQuestion" : "https://localhost:7094/api/Question/AddQuestion";
 
-                var executeSave = function() {
-                    $.ajax({
-                        url: url,
-                        type: method,
-                        contentType: "application/json",
-                        headers: { "Authorization": "Bearer " + getToken() },
-                        data: JSON.stringify(payload),
-                        success: function (res) {
-                            if (res.status) {
-                                $("#questionModal").modal("hide");
-                                Swal.fire("Başarılı", res.message, "success");
-                                loadQuestions();
-                            }
-                        },
-                        error: function(xhr) {
-                            if (xhr.status === 401) {
-                                attemptRefreshToken(executeSave);
-                            } else {
-                                Swal.fire('Hata!', 'Kayıt sırasında bir sorun oluştu.', 'error');
-                            }
+                $.ajax({
+                    url: url,
+                    type: qId > 0 ? "PUT" : "POST",
+                    contentType: "application/json",
+                    headers: { "Authorization": "Bearer " + getToken() },
+                    data: JSON.stringify(payload),
+                    success: function (res) {
+                        if (res.status) {
+                            $("#questionModal").modal("hide");
+                            Swal.fire("Başarılı", "Soru başarıyla kaydedildi.", "success");
+                            loadQuestions();
                         }
-                    });
-                };
-
-                executeSave();
+                    }
+                });
             });
 
+            // 5. SİLME
             $(document).on("click", ".btn-delete-question", function () {
                 var id = $(this).data("id");
-                Swal.fire({ title: 'Emin misiniz?', icon: 'warning', showCancelButton: true, confirmButtonText: 'Sil' }).then((result) => {
+                Swal.fire({ title: 'Soru silinsin mi?', text: "Bu soruya verilen tüm cevaplar da silinecektir!", icon: 'warning', showCancelButton: true, confirmButtonText: 'Evet, Sil' }).then((result) => {
                     if (result.isConfirmed) {
-                        var executeDelete = function() {
-                            $.ajax({
-                                url: "https://localhost:7094/api/Question/" + id,
-                                type: "DELETE",
-                                headers: { "Authorization": "Bearer " + getToken() },
-                                success: function () { loadQuestions(); },
-                                error: function(xhr) {
-                                    if (xhr.status === 401) attemptRefreshToken(executeDelete);
-                                }
-                            });
-                        };
-                        executeDelete();
+                        $.ajax({
+                            url: "https://localhost:7094/api/Question/" + id,
+                            type: "DELETE",
+                            headers: { "Authorization": "Bearer " + getToken() },
+                            success: function () {
+                                Swal.fire("Silindi", "Soru kaldırıldı.", "success");
+                                loadQuestions();
+                            }
+                        });
                     }
                 });
             });
         });
     </script>
+
+    <style>
+        .question-item:hover {
+            background-color: #f8f9fc;
+        }
+
+        .border-left-primary {
+            border-left: 4px solid #4e73df !important;
+        }
+
+        .border-left-info {
+            border-left: 4px solid #36b9cc !important;
+        }
+
+        .option-row {
+            transition: all 0.2s;
+        }
+
+            .option-row:hover {
+                border-color: #4e73df !important;
+            }
+    </style>
 }

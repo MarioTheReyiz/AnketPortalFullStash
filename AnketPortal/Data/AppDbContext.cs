@@ -17,6 +17,8 @@ namespace AnketPortal.API.Data
 
         public DbSet<SystemLog> SystemLogs { get; set; }
 
+        public DbSet<Review> Reviews { get; set; }
+
         protected override void OnModelCreating(ModelBuilder builder)
         {
             base.OnModelCreating(builder);

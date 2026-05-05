@@ -83,6 +83,18 @@
             <h4 class="m-0 fw-bold text-primary me-4 d-none d-md-block">ANKET PORTALI</h4>
             <a href="/Home/Index" class="btn btn-link text-decoration-none fw-bold text-secondary me-2"><i class="fa-solid fa-house me-1"></i> Ana Sayfa</a>
             <a href="/Home/Surveys" class="btn btn-link text-decoration-none fw-bold text-secondary"><i class="fa-solid fa-list-check me-1"></i> Tüm Anketler</a>
+
+            <!-- ADMIN MENU (SADECE ADMIN GÖRÜR) YENİ! -->
+            <span id="adminMenu" style="display:none;" class="ms-3 border-start ps-3">
+                <a href="/Survey/Index" class="btn btn-link text-decoration-none fw-bold text-primary"><i class="fa-solid fa-gear me-1"></i> Anket Yönetimi</a>
+                <a href="/Home/Reviews" class="btn btn-link text-decoration-none fw-bold text-warning"><i class="fa-solid fa-star me-1"></i> Değerlendirmeler</a>
+            </span>
+
+            <!-- SUPER ADMIN MENU -->
+            <span id="superAdminMenu" style="display:none;" class="ms-1 border-start ps-3">
+                <a href="/Home/Users" class="btn btn-link text-decoration-none fw-bold text-danger"><i class="fa-solid fa-users-gear me-1"></i> Kullanıcılar</a>
+                <a href="/Home/SystemLogs" class="btn btn-link text-decoration-none fw-bold text-secondary"><i class="fa-solid fa-server me-1"></i> Loglar</a>
+            </span>
         </div>
 
         <!-- SAĞ KISIM: PROFİL, BİLDİRİM, DARK MODE -->
@@ -90,7 +102,7 @@
 
             <!-- Admin bu sayfaya gelirse Paneline dönebilsin diye tuş -->
             <a href="/Home/Dashboard" id="btnSwitchToAdmin" class="btn btn-sm btn-warning text-dark fw-bold rounded-pill shadow-sm me-3 px-3" style="display:none;">
-                <i class="fa-solid fa-gauge-high me-1"></i> Yönetim Paneli
+                <i class="fa-solid fa-gauge-high me-1"></i> Dashboard
             </a>
 
             <!-- BİLDİRİM ÇANI -->
@@ -163,10 +175,15 @@
                 var userRole = decodedToken["http://schemas.microsoft.com/ws/2008/06/identity/claims/role"] || decodedToken.role || decodedToken.Role || "User";
                 $("#lblUserRole").text(userRole);
 
-                // Adminse panele dönüş butonunu göster
+                // Adminse menüleri göster
                 if(userRole === "Admin" || userRole === "SuperAdmin") {
                     $("#lblUserRole").removeClass("bg-primary").addClass("bg-danger");
                     $("#btnSwitchToAdmin").show();
+                    $("#adminMenu").show(); // Yönetim linkleri açıldı
+                }
+
+                if (userRole === "SuperAdmin") {
+                    $("#superAdminMenu").show();
                 }
 
                 var tempName = decodedToken.unique_name || "Kullanıcı";
@@ -218,6 +235,7 @@
             });
         });
     </script>
+
     @await RenderSectionAsync("Scripts", required: false)
 </body>
 </html>

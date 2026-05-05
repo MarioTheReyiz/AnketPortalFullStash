@@ -47,6 +47,10 @@ namespace AnketPortal.UI.Controllers
         {
             return View();
         }
+        public IActionResult Reviews()
+        {
+            return View();
+        }
         public IActionResult Users() { return View(); }
     }
 }

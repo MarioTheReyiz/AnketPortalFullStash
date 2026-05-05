@@ -352,5 +352,45 @@ namespace AnketPortal.API.Controllers
 
             return Ok(new ResultDto { Status = true, Data = resultData });
         }
+        // ANKETİ ÇÖZEN KATILIMCILARIN LİSTESİ
+        [Authorize(Roles = "Admin,SuperAdmin")]
+        [HttpGet("{id}/Participants")]
+        public async Task<IActionResult> GetParticipants(int id)
+        {
+            // Bu ankete cevap vermiş benzersiz kullanıcıları bul
+            var participants = await _context.SurveyAnswers
+                .Where(a => a.Question.SurveyId == id)
+                .Select(a => a.AppUser)
+                .Distinct()
+                .Select(u => new {
+                    u.Id,
+                    UserName = u.UserName,
+                    FullName = u.FullName,
+                    Email = u.Email
+                })
+                .ToListAsync();
+
+            return Ok(new ResultDto { Status = true, Data = participants });
+        }
+
+        // BELİRLİ BİR KATILIMCININ CEVAP KAĞIDI
+        [Authorize(Roles = "Admin,SuperAdmin")]
+        [HttpGet("{surveyId}/ParticipantDetails/{userId}")]
+        public async Task<IActionResult> GetParticipantDetails(int surveyId, string userId)
+        {
+            var answers = await _context.SurveyAnswers
+                .Include(a => a.Question)
+                .Include(a => a.SelectedOption)
+                .Where(a => a.Question.SurveyId == surveyId && a.AppUserId == userId)
+                .Select(a => new {
+                    QuestionText = a.Question.Text,
+                    QuestionType = a.Question.Type,
+                    AnswerText = a.TextAnswer,
+                    SelectedOption = a.SelectedOption != null ? a.SelectedOption.OptionText : null
+                })
+                .ToListAsync();
+
+            return Ok(new ResultDto { Status = true, Data = answers });
+        }
     }
 }
