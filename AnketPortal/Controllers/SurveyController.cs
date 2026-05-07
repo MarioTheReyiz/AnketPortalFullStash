@@ -59,7 +59,7 @@ namespace AnketPortal.API.Controllers
             return Ok(result);
         }
 
-        // Anket Detaylarını Getirme
+        // Anket Detaylarını Getirme (SKIP LOGIC EKLENTİSİ BURADA YAPILDI)
         [HttpGet("{id}")]
         public async Task<IActionResult> GetSurveyById(int id)
         {
@@ -71,7 +71,34 @@ namespace AnketPortal.API.Controllers
             if (survey == null || !survey.IsActive)
                 return NotFound(new ResultDto { Status = false, Message = "Anket bulunamadı." });
 
-            return Ok(survey);
+            // Geri dönüş nesnesini manuel oluşturuyoruz (DTO kullanmak yerine)
+            var response = new
+            {
+                survey.Id,
+                survey.Title,
+                survey.Description,
+                survey.EndDate,
+                survey.IsActive,
+                survey.IsPublic, // Görünürlük
+                Questions = survey.Questions.Select(q => new
+                {
+                    q.Id,
+                    q.Text,
+                    q.MediaUrl,
+                    q.Type,
+                    q.IsRequired,
+                    Options = q.Options.Select(o => new
+                    {
+                        o.Id,
+                        o.OptionText,
+                        o.ImageUrl,
+                        // İŞTE EKSİK OLAN HAYATİ SATIR BURASI! "SKIP LOGIC" BURADAN BESLENECEK
+                        NextQuestionId = o.NextQuestionId
+                    }).ToList()
+                }).ToList()
+            };
+
+            return Ok(new ResultDto { Status = true, Data = response });
         }
 
         // Yeni Anket Oluşturma
@@ -300,6 +327,7 @@ namespace AnketPortal.API.Controllers
 
             return Ok(new ResultDto { Status = true, Data = notifications });
         }
+
         // ANKET SONUÇLARINI / İSTATİSTİKLERİNİ GETİREN METOT
         [Authorize(Roles = "Admin,SuperAdmin")]
         [HttpGet("{id}/Results")]
@@ -352,6 +380,7 @@ namespace AnketPortal.API.Controllers
 
             return Ok(new ResultDto { Status = true, Data = resultData });
         }
+
         // ANKETİ ÇÖZEN KATILIMCILARIN LİSTESİ
         [Authorize(Roles = "Admin,SuperAdmin")]
         [HttpGet("{id}/Participants")]

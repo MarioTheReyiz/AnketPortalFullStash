@@ -247,6 +247,7 @@
             }
 
             // 4. İLERİ BUTONU (AKILLI ATLAMA MANTIĞI BURADA)
+           // 4. İLERİ BUTONU (AKILLI ATLAMA MANTIĞI BURADA)
             $("#btnNext").click(function () {
                 if (!isCurrentStepValid()) {
                     Swal.fire('Uyarı', 'Lütfen devam etmeden önce bu soruyu yanıtlayın.', 'warning');
@@ -257,15 +258,19 @@
 
                 // Seçilen şıkta bir zıplama hedefi var mı kontrol et?
                 var selectedOption = $(`#step_${currentStep} input.option-input:checked`);
-                if (selectedOption.length > 0) {
-                    // Sadece son seçilen (radio için) veya varsa ilk zıplama hedefli olanı (checkbox için) alıyoruz
-                    var skipTargetId = $(selectedOption[0]).data("next");
 
-                    if (skipTargetId) {
-                        // Target ID'nin kaçıncı indexli soru olduğunu bul
+                if (selectedOption.length > 0) {
+                    // İlk seçili olan şıkkın 'data-next' değerini al
+                    var skipTargetId = $(selectedOption[0]).attr("data-next");
+
+                    // Eğer skipTargetId 'null', 'undefined' veya boş string DEĞİLSE
+                    if (skipTargetId && skipTargetId !== "null" && skipTargetId !== "") {
+
+                        // O ID'ye sahip sorunun dizideki GERÇEK sırasını (index) bul
                         var targetIdx = questions.findIndex(q => q.id == skipTargetId);
+
                         if (targetIdx !== -1) {
-                            nextTargetIndex = targetIdx;
+                            nextTargetIndex = targetIdx; // Atlanacak sorunun sırasına git
                         }
                     }
                 }

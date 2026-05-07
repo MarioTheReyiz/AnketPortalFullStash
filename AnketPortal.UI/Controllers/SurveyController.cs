@@ -27,5 +27,6 @@ namespace AnketPortal.UI.Controllers
             ViewBag.SurveyId = id; // BU SATIR ÇOK ÖNEMLİ!
             return View();
         }
+
     }
 }

@@ -17,5 +17,7 @@
         public string? ImageUrl { get; set; }
         public string OptionText { get; set; } = string.Empty;
         public int Order { get; set; }
+
+        public int? NextQuestionId { get; set; }
     }
 }
