@@ -16,5 +16,7 @@
         public string? ImageUrl { get; set; } // Şık Foto
         public int Order { get; set; }      // SurveyController için eklendi
         public int QuestionId { get; set; } // SurveyController için eklendi
+
+        public int? NextQuestionId { get; set; }
     }
 }

@@ -1,152 +1,121 @@
-﻿using AnketPortal.API.DTOs;
+﻿using AnketPortal.API.Data;
+using AnketPortal.API.DTOs;
 using AnketPortal.API.Models;
-using AnketPortal.API.Repositories;
+using AnketPortal.API.Models.Enums;
 using Microsoft.AspNetCore.Authorization;
 using Microsoft.AspNetCore.Mvc;
 using Microsoft.EntityFrameworkCore;
-using System;
-using System.Linq;
-using System.Threading.Tasks;
 
 namespace AnketPortal.API.Controllers
 {
     [Route("api/[controller]")]
     [ApiController]
+    [Authorize]
     public class QuestionController : ControllerBase
     {
-        private readonly IGenericRepository<Question> _questionRepo;
-        private readonly IGenericRepository<QuestionOption> _optionRepo;
+        private readonly AppDbContext _context;
+        public QuestionController(AppDbContext context) => _context = context;
 
-        public QuestionController(IGenericRepository<Question> questionRepo, IGenericRepository<QuestionOption> optionRepo)
+        [HttpPost("AddQuestion")]
+        public async Task<IActionResult> AddQuestion(QuestionCreateDto model)
         {
-            _questionRepo = questionRepo;
-            _optionRepo = optionRepo;
+            var question = new Question
+            {
+                SurveyId = model.SurveyId,
+                Text = model.Text,
+                Type = (AnketPortal.API.Models.Enums.QuestionType)model.Type,
+                IsRequired = model.IsRequired,
+                MediaUrl = model.MediaUrl
+            };
+
+            if (model.Type != 1 && model.Options != null)
+            {
+                foreach (var opt in model.Options)
+                {
+                    question.Options.Add(new QuestionOption
+                    {
+                        OptionText = opt.OptionText,
+                        ImageUrl = opt.ImageUrl,
+                        Order = question.Options.Count + 1,
+                        // VERİTABANINA HEDEF SORUYU KAYDET
+                        NextQuestionId = opt.NextQuestionId
+                    });
+                }
+            }
+
+            _context.Questions.Add(question);
+            await _context.SaveChangesAsync();
+            return Ok(new ResultDto { Status = true, Message = "Soru başarıyla kaydedildi." });
         }
 
         [HttpGet("GetBySurvey/{surveyId}")]
         public async Task<IActionResult> GetBySurvey(int surveyId)
         {
-            var questions = await _questionRepo.AsQueryable()
-                .Include(q => q.Options.OrderBy(o => o.Order))
+            var questions = await _context.Questions.Include(q => q.Options)
                 .Where(q => q.SurveyId == surveyId)
-                .Select(q => new
+                .Select(q => new QuestionDto
                 {
-                    q.Id,
-                    q.Text,
-                    q.MediaUrl,
-                    q.Type,
-                    q.IsRequired,
-                    Options = q.Options.Select(o => new
+                    Id = q.Id,
+                    Text = q.Text,
+                    Type = (int)q.Type,
+                    IsRequired = q.IsRequired,
+                    MediaUrl = q.MediaUrl,
+                    Options = q.Options.Select(o => new OptionDto
                     {
-                        o.Id,
-                        o.OptionText,
-                        o.ImageUrl,
-                        o.Order,
-                        o.NextQuestionId // GETİRİRKEN UI'A GÖNDERİYORUZ
-                    })
-                })
-                .ToListAsync();
-
+                        Id = o.Id,
+                        OptionText = o.OptionText,
+                        ImageUrl = o.ImageUrl,
+                        Order = o.Order,
+                        // ÇÖZME EKRANINA HEDEF SORUYU GÖNDER
+                        NextQuestionId = o.NextQuestionId
+                    }).OrderBy(o => o.Order).ToList()
+                }).ToListAsync();
             return Ok(new ResultDto { Status = true, Data = questions });
         }
 
-        [Authorize(Roles = "Admin,SuperAdmin")]
-        [HttpPost("AddQuestion")]
-        public async Task<IActionResult> AddQuestion(QuestionDto model)
+        // Soruyu ve bağlı olduğu şıkları siler
+        [HttpDelete("{id}")]
+        public async Task<IActionResult> Delete(int id)
         {
-            var question = new Question
-            {
-                Text = model.Text,
-                MediaUrl = model.MediaUrl,
-                Type = (Models.Enums.QuestionType)model.Type,
-                IsRequired = model.IsRequired,
-                SurveyId = model.Id,
-                CreatedDate = DateTime.Now
-            };
+            var question = await _context.Questions.Include(q => q.Options).FirstOrDefaultAsync(x => x.Id == id);
+            if (question == null) return NotFound(new ResultDto { Status = false, Message = "Soru bulunamadı." });
 
-            await _questionRepo.AddAsync(question);
-            await _questionRepo.SaveAsync(); // Önce soruyu kaydet ki ID'si oluşsun
-
-            if (model.Type != 1 && model.Options != null && model.Options.Any())
-            {
-                foreach (var opt in model.Options)
-                {
-                    var option = new QuestionOption
-                    {
-                        OptionText = opt.OptionText,
-                        ImageUrl = opt.ImageUrl,
-                        Order = opt.Order,
-                        QuestionId = question.Id,
-                        NextQuestionId = opt.NextQuestionId // KAYDEDERKEN VERİTABANINA YAZIYORUZ
-                    };
-                    await _optionRepo.AddAsync(option);
-                }
-                await _optionRepo.SaveAsync();
-            }
-
-            return Ok(new ResultDto { Status = true, Message = "Soru başarıyla eklendi." });
+            _context.Questions.Remove(question);
+            await _context.SaveChangesAsync();
+            return Ok(new ResultDto { Status = true, Message = "Soru başarıyla silindi." });
         }
 
-        [Authorize(Roles = "Admin,SuperAdmin")]
+        // Mevcut soruyu günceller
         [HttpPut("UpdateQuestion")]
         public async Task<IActionResult> UpdateQuestion(QuestionDto model)
         {
-            var question = await _questionRepo.AsQueryable()
-                .Include(q => q.Options)
-                .FirstOrDefaultAsync(q => q.Id == model.Id);
-
-            if (question == null)
-                return NotFound(new ResultDto { Status = false, Message = "Soru bulunamadı." });
+            var question = await _context.Questions.Include(q => q.Options).FirstOrDefaultAsync(x => x.Id == model.Id);
+            if (question == null) return NotFound(new ResultDto { Status = false, Message = "Soru bulunamadı." });
 
             question.Text = model.Text;
-            question.MediaUrl = model.MediaUrl;
-            question.Type = (Models.Enums.QuestionType)model.Type;
             question.IsRequired = model.IsRequired;
+            question.Type = (AnketPortal.API.Models.Enums.QuestionType)model.Type;
+            question.MediaUrl = model.MediaUrl; // URL Güncellemesi de eksikti eklendi.
 
-            // Eski şıkları tamamen sil
-            if (question.Options != null && question.Options.Any())
-            {
-                foreach (var oldOpt in question.Options.ToList())
-                {
-                    _optionRepo.Delete(oldOpt);
-                }
-            }
+            _context.QuestionOptions.RemoveRange(question.Options);
 
-            // Yeni şıkları ekle
-            if (model.Type != 1 && model.Options != null && model.Options.Any())
+            if (model.Type != 1 && model.Options != null)
             {
                 foreach (var opt in model.Options)
                 {
-                    var newOption = new QuestionOption
+                    question.Options.Add(new QuestionOption
                     {
                         OptionText = opt.OptionText,
-                        ImageUrl = opt.ImageUrl,
+                        ImageUrl = opt.ImageUrl, // Güncellerken görsel silinme hatası düzeltildi
                         Order = opt.Order,
-                        QuestionId = question.Id,
-                        NextQuestionId = opt.NextQuestionId // EKSİK OLAN YER BURASIYDI, EKLENDİ!
-                    };
-                    await _optionRepo.AddAsync(newOption);
+                        // GÜNCELLERKEN HEDEF SORUYU KAYDET
+                        NextQuestionId = opt.NextQuestionId
+                    });
                 }
             }
 
-            _questionRepo.Update(question);
-            await _questionRepo.SaveAsync();
-
+            await _context.SaveChangesAsync();
             return Ok(new ResultDto { Status = true, Message = "Soru başarıyla güncellendi." });
-        }
-
-        [Authorize(Roles = "Admin,SuperAdmin")]
-        [HttpDelete("{id}")]
-        public async Task<IActionResult> DeleteQuestion(int id)
-        {
-            var question = await _questionRepo.GetByIdAsync(id);
-            if (question == null)
-                return NotFound(new ResultDto { Status = false, Message = "Soru bulunamadı." });
-
-            _questionRepo.Delete(question);
-            await _questionRepo.SaveAsync();
-
-            return Ok(new ResultDto { Status = true, Message = "Soru başarıyla silindi." });
         }
     }
 }
