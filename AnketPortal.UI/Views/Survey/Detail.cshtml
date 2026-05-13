@@ -90,92 +90,107 @@
 
 @section Scripts {
     <script>
+        // =====================================================
+        // GLOBAL DEĞİŞKENLER VE FONKSİYONLAR
+        // loadQuestions ve addOptionInput global scope'ta
+        // tanımlandı; böylece silme/güncelleme sonrası
+        // her yerden çağrılabilir.
+        // =====================================================
         var allQuestions = [];
         var surveyId = $("#hdnSurveyId").val();
 
         function getToken() { return localStorage.getItem("token"); }
 
-        $(document).ready(function () {
-            loadQuestions();
+        // ---- BUG FIX #1: loadQuestions global scope'a taşındı ----
+        function loadQuestions() {
+            $.ajax({
+                url: "https://localhost:7094/api/Question/GetBySurvey/" + surveyId,
+                type: "GET",
+                headers: { "Authorization": "Bearer " + getToken() },
+                success: function (res) {
+                    allQuestions = res.data || res.Data || [];
+                    var html = "";
 
-            function loadQuestions() {
-                $.ajax({
-                    url: "https://localhost:7094/api/Question/GetBySurvey/" + surveyId,
-                    type: "GET",
-                    headers: { "Authorization": "Bearer " + getToken() },
-                    success: function (res) {
-                        allQuestions = res.data || res.Data || [];
-                        var html = "";
+                    if (allQuestions.length > 0) {
+                        allQuestions.forEach(function (q, index) {
+                            var qId = q.id || q.Id;
+                            var qText = q.text || q.Text || "Soru";
+                            var qType = q.type !== undefined ? q.type : q.Type;
+                            var isReq = q.isRequired !== undefined ? q.isRequired : q.IsRequired;
+                            var mUrl = q.mediaUrl || q.MediaUrl;
 
-                        if (allQuestions.length > 0) {
-                            allQuestions.forEach(function (q, index) {
-                                var qId = q.id || q.Id;
-                                var qText = q.text || q.Text || "Soru";
-                                var qType = q.type !== undefined ? q.type : q.Type;
-                                var isReq = q.isRequired !== undefined ? q.isRequired : q.IsRequired;
-                                var mUrl = q.mediaUrl || q.MediaUrl;
+                            var typeIcon = qType == 1 ? "fa-align-left" : (qType == 2 ? "fa-circle-dot" : "fa-square-check");
+                            var requiredBadge = isReq ? '<span class="badge bg-danger ms-2">Zorunlu</span>' : '';
 
-                                var typeIcon = qType == 1 ? "fa-align-left" : (qType == 2 ? "fa-circle-dot" : "fa-square-check");
-                                var requiredBadge = isReq ? '<span class="badge bg-danger ms-2">Zorunlu</span>' : '';
-
-                                html += `
-                                <div class="p-4 border-bottom question-item">
-                                    <div class="d-flex justify-content-between align-items-start">
-                                        <div class="flex-grow-1">
-                                            <h5 class="fw-bold mb-1">${index + 1}. ${qText} ${requiredBadge}</h5>
-                                            <span class="small text-muted"><i class="fa-solid ${typeIcon} me-1"></i> ${qType==1?'Metin':qType==2?'Tek Seçim':'Çoklu Seçim'}</span>
-                                        </div>
-                                        <div class="ms-3 d-flex">
-                                            <button class="btn btn-sm btn-light border btn-edit-question me-1" data-id="${qId}" title="Düzenle"><i class="fa fa-pen text-warning"></i></button>
-                                            <button class="btn btn-sm btn-light border btn-delete-question" data-id="${qId}" title="Sil"><i class="fa fa-trash text-danger"></i></button>
-                                        </div>
+                            html += `
+                            <div class="p-4 border-bottom question-item">
+                                <div class="d-flex justify-content-between align-items-start">
+                                    <div class="flex-grow-1">
+                                        <h5 class="fw-bold mb-1">${index + 1}. ${qText} ${requiredBadge}</h5>
+                                        <span class="small text-muted"><i class="fa-solid ${typeIcon} me-1"></i> ${qType==1?'Metin':qType==2?'Tek Seçim':'Çoklu Seçim'}</span>
                                     </div>
-                                    ${mUrl ? `<div class="mt-2"><small class="text-truncate d-block" style="max-width:300px"><i class="fa fa-link me-1"></i>${mUrl}</small></div>` : ''}
-                                </div>`;
-                            });
-                        } else {
-                            html = '<div class="text-center p-5 text-muted">Henüz soru eklenmemiş. "Yeni Soru Ekle" butonu ile başlayın.</div>';
-                        }
-                        $("#questionsList").html(html);
+                                    <div class="ms-3 d-flex">
+                                        <button class="btn btn-sm btn-light border btn-edit-question me-1" data-id="${qId}" title="Düzenle"><i class="fa fa-pen text-warning"></i></button>
+                                        <button class="btn btn-sm btn-light border btn-delete-question" data-id="${qId}" title="Sil"><i class="fa fa-trash text-danger"></i></button>
+                                    </div>
+                                </div>
+                                ${mUrl ? `<div class="mt-2"><small class="text-truncate d-block" style="max-width:300px"><i class="fa fa-link me-1"></i>${mUrl}</small></div>` : ''}
+                            </div>`;
+                        });
+                    } else {
+                        html = '<div class="text-center p-5 text-muted">Henüz soru eklenmemiş. "Yeni Soru Ekle" butonu ile başlayın.</div>';
                     }
-                });
-            }
+                    $("#questionsList").html(html);
+                },
+                error: function (xhr) {
+                    if (xhr.status === 401) {
+                        localStorage.removeItem("token");
+                        window.location.href = "/Auth/Login";
+                    }
+                }
+            });
+        }
 
-            // KRİTİK DÜZELTME: Dropdown'a soruları doldururken sigortalı değişkenler
-            function addOptionInput(text = "", img = "", nextQId = null) {
-                var skipOptions = `<option value="">Sıradaki Soru (Varsayılan)</option>`;
-                allQuestions.forEach(function(item) {
-                    var itemId = item.id || item.Id; // Sigorta!
-                    var itemText = item.text || item.Text || "Soru"; // Sigorta!
+        function addOptionInput(text = "", img = "", nextQId = null) {
+            var skipOptions = `<option value="">Sıradaki Soru (Varsayılan)</option>`;
+            allQuestions.forEach(function(item) {
+                var itemId = item.id || item.Id;
+                var itemText = item.text || item.Text || "Soru";
+                var selected = (nextQId && nextQId == itemId) ? "selected" : "";
+                skipOptions += `<option value="${itemId}" ${selected}>${itemText.substring(0, 40)}...</option>`;
+            });
 
-                    var selected = (nextQId && nextQId == itemId) ? "selected" : "";
-                    skipOptions += `<option value="${itemId}" ${selected}>${itemText.substring(0, 40)}...</option>`;
-                });
-
-                var html = `
-                    <div class="option-row bg-white border rounded-3 p-3 mb-3 shadow-sm">
-                        <div class="row g-2">
-                            <div class="col-md-7">
-                                <label class="small fw-bold text-muted mb-1">Şık Metni</label>
-                                <input type="text" class="form-control form-control-sm option-input" placeholder="Seçenek metni..." value="${text}">
-                            </div>
-                            <div class="col-md-5 text-end">
-                                <button class="btn btn-sm btn-link text-danger btn-remove-option mt-3 p-0" type="button"><i class="fa fa-trash me-1"></i>Sil</button>
-                            </div>
-                            <div class="col-md-6">
-                                <label class="small fw-bold text-muted mb-1">Görsel URL (Opsiyonel)</label>
-                                <input type="text" class="form-control form-control-sm option-image-input" placeholder="https://..." value="${img}">
-                            </div>
-                            <div class="col-md-6">
-                                <label class="small fw-bold text-primary mb-1"><i class="fa-solid fa-shuffle me-1"></i>Hedef Soru (Skip Logic)</label>
-                                <select class="form-select form-select-sm next-question-select">
-                                    ${skipOptions}
-                                </select>
-                            </div>
+            var html = `
+                <div class="option-row bg-white border rounded-3 p-3 mb-3 shadow-sm">
+                    <div class="row g-2">
+                        <div class="col-md-7">
+                            <label class="small fw-bold text-muted mb-1">Şık Metni</label>
+                            <input type="text" class="form-control form-control-sm option-input" placeholder="Seçenek metni..." value="${text}">
                         </div>
-                    </div>`;
-                $("#optionsContainer").append(html);
-            }
+                        <div class="col-md-5 text-end">
+                            <button class="btn btn-sm btn-link text-danger btn-remove-option mt-3 p-0" type="button"><i class="fa fa-trash me-1"></i>Sil</button>
+                        </div>
+                        <div class="col-md-6">
+                            <label class="small fw-bold text-muted mb-1">Görsel URL (Opsiyonel)</label>
+                            <input type="text" class="form-control form-control-sm option-image-input" placeholder="https://..." value="${img}">
+                        </div>
+                        <div class="col-md-6">
+                            <label class="small fw-bold text-primary mb-1"><i class="fa-solid fa-shuffle me-1"></i>Hedef Soru (Skip Logic)</label>
+                            <select class="form-select form-select-sm next-question-select">
+                                ${skipOptions}
+                            </select>
+                        </div>
+                    </div>
+                </div>`;
+            $("#optionsContainer").append(html);
+        }
+
+        // =====================================================
+        // DOCUMENT READY
+        // =====================================================
+        $(document).ready(function () {
+
+            loadQuestions();
 
             $("#btnOpenAddModal").click(function () {
                 $("#hdnQuestionId").val("0");
@@ -236,9 +251,7 @@
                         var nextQ = $(this).find(".next-question-select").val();
 
                         if (txt !== "") {
-                            // KRİTİK DÜZELTME: Undefined koruması
                             var finalNextId = (nextQ && nextQ !== "" && nextQ !== "undefined") ? parseInt(nextQ) : null;
-
                             options.push({
                                 OptionText: txt,
                                 ImageUrl: img,
@@ -271,28 +284,45 @@
                         if (res.status || res.Status) {
                             $("#questionModal").modal("hide");
                             Swal.fire("Başarılı", "Soru başarıyla kaydedildi.", "success");
-                            loadQuestions();
+                            loadQuestions(); // global fonksiyon, sorunsuz çalışır
                         }
+                    },
+                    error: function () {
+                        Swal.fire("Hata", "Soru kaydedilemedi.", "error");
                     }
                 });
             });
 
+            // ---- BUG FIX #1: Silme butonu - loadQuestions artık global, liste güncelleniyor ----
             $(document).on("click", ".btn-delete-question", function () {
                 var id = $(this).data("id");
-                Swal.fire({ title: 'Soru silinsin mi?', text: "Bu soruya verilen tüm cevaplar da silinecektir!", icon: 'warning', showCancelButton: true, confirmButtonText: 'Evet, Sil' }).then((result) => {
+                Swal.fire({
+                    title: 'Soru silinsin mi?',
+                    text: "Bu soruya verilen tüm cevaplar da silinecektir!",
+                    icon: 'warning',
+                    showCancelButton: true,
+                    confirmButtonColor: '#d33',
+                    confirmButtonText: 'Evet, Sil',
+                    cancelButtonText: 'İptal'
+                }).then((result) => {
                     if (result.isConfirmed) {
                         $.ajax({
                             url: "https://localhost:7094/api/Question/" + id,
                             type: "DELETE",
                             headers: { "Authorization": "Bearer " + getToken() },
                             success: function () {
-                                Swal.fire("Silindi", "Soru kaldırıldı.", "success");
-                                loadQuestions();
+                                Swal.fire("Silindi!", "Soru başarıyla kaldırıldı.", "success");
+                                loadQuestions(); // global fonksiyon - liste anında güncellenir
+                            },
+                            error: function (xhr) {
+                                var msg = (xhr.responseJSON && xhr.responseJSON.message) ? xhr.responseJSON.message : "Silme işlemi başarısız oldu.";
+                                Swal.fire("Hata!", msg, "error");
                             }
                         });
                     }
                 });
             });
+
         });
     </script>
     <style>

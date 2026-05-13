@@ -18,6 +18,6 @@ namespace AnketPortal.API.DTOs
 
         public string? TextAnswer { get; set; } 
 
-        public int? SelectedOptionId { get; set; } //
+        public int? SelectedOptionId { get; set; } 
     }
 }

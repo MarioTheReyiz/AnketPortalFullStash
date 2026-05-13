@@ -34,7 +34,7 @@ namespace AnketPortal.API.Controllers
             _context = context;
         }
 
-        // Aktif Anketleri Listeleme ve Arama 
+        // Aktif Anketleri Listeleme ve Arama
         [HttpGet]
         public async Task<IActionResult> GetSurveys(string? search = null)
         {
@@ -59,7 +59,7 @@ namespace AnketPortal.API.Controllers
             return Ok(result);
         }
 
-        // Anket Detaylarını Getirme (SKIP LOGIC EKLENTİSİ BURADA YAPILDI)
+        // Anket Detaylarını Getirme
         [HttpGet("{id}")]
         public async Task<IActionResult> GetSurveyById(int id)
         {
@@ -71,7 +71,6 @@ namespace AnketPortal.API.Controllers
             if (survey == null || !survey.IsActive)
                 return NotFound(new ResultDto { Status = false, Message = "Anket bulunamadı." });
 
-            // Geri dönüş nesnesini manuel oluşturuyoruz (DTO kullanmak yerine)
             var response = new
             {
                 survey.Id,
@@ -79,7 +78,7 @@ namespace AnketPortal.API.Controllers
                 survey.Description,
                 survey.EndDate,
                 survey.IsActive,
-                survey.IsPublic, // Görünürlük
+                survey.IsPublic,
                 Questions = survey.Questions.Select(q => new
                 {
                     q.Id,
@@ -92,7 +91,6 @@ namespace AnketPortal.API.Controllers
                         o.Id,
                         o.OptionText,
                         o.ImageUrl,
-                        // İŞTE EKSİK OLAN HAYATİ SATIR BURASI! "SKIP LOGIC" BURADAN BESLENECEK
                         NextQuestionId = o.NextQuestionId
                     }).ToList()
                 }).ToList()
@@ -136,7 +134,7 @@ namespace AnketPortal.API.Controllers
             return Ok(new ResultDto { Status = true, Message = "Anket başarıyla oluşturuldu." });
         }
 
-        // Anket Güncelleme 
+        // Anket Güncelleme
         [Authorize(Roles = "Admin,SuperAdmin")]
         [HttpPut]
         public async Task<IActionResult> UpdateSurvey(SurveyDto model)
@@ -166,7 +164,7 @@ namespace AnketPortal.API.Controllers
             return Ok(new ResultDto { Status = true, Message = "Anket başarıyla güncellendi." });
         }
 
-        // Anlık Durum Değiştirme (Switch Butonu İçin) 
+        // Anlık Durum Değiştirme (Switch Butonu İçin)
         [Authorize(Roles = "Admin,SuperAdmin")]
         [HttpPut("ToggleActive/{id}")]
         public async Task<IActionResult> ToggleActiveStatus(int id)
@@ -182,7 +180,6 @@ namespace AnketPortal.API.Controllers
             return Ok(new ResultDto { Status = true, Message = survey.IsActive ? "Anket Aktif edildi." : "Anket Pasife alındı." });
         }
 
-        // Ankete Soru Ekleme
         [Authorize(Roles = "Admin,SuperAdmin")]
         [HttpPost("AddQuestion")]
         public async Task<IActionResult> AddQuestion(QuestionDto model)
@@ -202,7 +199,6 @@ namespace AnketPortal.API.Controllers
             return Ok(new ResultDto { Status = true, Message = "Soru başarıyla eklendi." });
         }
 
-        // Soruya Şık Ekleme 
         [Authorize(Roles = "Admin,SuperAdmin")]
         [HttpPost("AddOption")]
         public async Task<IActionResult> AddOption(OptionCreateDto model)
@@ -222,7 +218,6 @@ namespace AnketPortal.API.Controllers
             return Ok(new ResultDto { Status = true, Message = "Şık başarıyla eklendi." });
         }
 
-        // Anket Silme (Soft Delete)
         [Authorize(Roles = "Admin,SuperAdmin")]
         [HttpDelete("{id}")]
         public async Task<IActionResult> DeleteSurvey(int id)
@@ -248,7 +243,6 @@ namespace AnketPortal.API.Controllers
             return Ok(new ResultDto { Status = true, Message = "Anket başarıyla silindi (pasife alındı)." });
         }
 
-        // Veritabanından fiziksel olarak sil (Hard Delete)
         [Authorize(Roles = "SuperAdmin")]
         [HttpDelete("{id}/HardDelete")]
         public async Task<IActionResult> HardDeleteSurvey(int id)
@@ -282,8 +276,7 @@ namespace AnketPortal.API.Controllers
             return Ok(new ResultDto { Status = true, Data = stats });
         }
 
-        // DİNAMİK BİLDİRİMLER
-        [Authorize]
+        [Authorize(Roles = "Admin,SuperAdmin")]
         [HttpGet("GetNotifications")]
         public async Task<IActionResult> GetNotifications()
         {
@@ -328,7 +321,6 @@ namespace AnketPortal.API.Controllers
             return Ok(new ResultDto { Status = true, Data = notifications });
         }
 
-        // ANKET SONUÇLARINI / İSTATİSTİKLERİNİ GETİREN METOT
         [Authorize(Roles = "Admin,SuperAdmin")]
         [HttpGet("{id}/Results")]
         public async Task<IActionResult> GetSurveyResults(int id)
@@ -343,7 +335,6 @@ namespace AnketPortal.API.Controllers
 
             var questionIds = survey.Questions.Select(q => q.Id).ToList();
 
-            // Bu ankete ait tüm cevapları al
             var allAnswers = await _context.SurveyAnswers
                 .Where(a => questionIds.Contains(a.QuestionId))
                 .ToListAsync();
@@ -358,19 +349,13 @@ namespace AnketPortal.API.Controllers
                     Id = q.Id,
                     QuestionText = q.Text,
                     Type = q.Type,
-                    // Bu soruya toplam kaç kişi cevap vermiş?
                     TotalVotes = allAnswers.Count(a => a.QuestionId == q.Id),
-
-                    // Şıklı Sorular İçin (Radio/Checkbox) Oyları Say
                     Options = q.Options.Select(o => new
                     {
                         Id = o.Id,
-                        // DÜZELTİLEN YER BURASI! (Sadece OptionText kullanıyoruz, olmayan Text'i sildik)
                         OptionText = o.OptionText,
                         Count = allAnswers.Count(a => a.QuestionId == q.Id && a.SelectedOptionId == o.Id)
                     }).ToList(),
-
-                    // AÇIK UÇLU SORULAR İÇİN: Yazılan metinleri liste halinde al!
                     TextAnswers = allAnswers
                         .Where(a => a.QuestionId == q.Id && !string.IsNullOrWhiteSpace(a.TextAnswer))
                         .Select(a => a.TextAnswer)
@@ -381,12 +366,10 @@ namespace AnketPortal.API.Controllers
             return Ok(new ResultDto { Status = true, Data = resultData });
         }
 
-        // ANKETİ ÇÖZEN KATILIMCILARIN LİSTESİ
         [Authorize(Roles = "Admin,SuperAdmin")]
         [HttpGet("{id}/Participants")]
         public async Task<IActionResult> GetParticipants(int id)
         {
-            // Bu ankete cevap vermiş benzersiz kullanıcıları bul
             var participants = await _context.SurveyAnswers
                 .Where(a => a.Question.SurveyId == id)
                 .Select(a => a.AppUser)
@@ -402,7 +385,7 @@ namespace AnketPortal.API.Controllers
             return Ok(new ResultDto { Status = true, Data = participants });
         }
 
-        // BELİRLİ BİR KATILIMCININ CEVAP KAĞIDI
+        // Belirli Bir Katılımcının Cevap Kağıdı
         [Authorize(Roles = "Admin,SuperAdmin")]
         [HttpGet("{surveyId}/ParticipantDetails/{userId}")]
         public async Task<IActionResult> GetParticipantDetails(int surveyId, string userId)
@@ -420,6 +403,26 @@ namespace AnketPortal.API.Controllers
                 .ToListAsync();
 
             return Ok(new ResultDto { Status = true, Data = answers });
+        }
+
+        [HttpGet("GetSystemLogs")]
+        [Authorize(Roles = "Admin,SuperAdmin")]
+        public async Task<IActionResult> GetSystemLogs()
+        {
+            var logs = await _context.SystemLogs
+                .OrderByDescending(l => l.CreatedDate)
+                .Select(l => new
+                {
+                    l.Action,
+                    l.Message,
+                    Username = l.Username,
+                    l.Color,
+                    l.Icon,
+                    Time = l.CreatedDate.ToString("dd.MM.yyyy HH:mm")
+                })
+                .ToListAsync();
+
+            return Ok(new ResultDto { Status = true, Data = logs });
         }
     }
 }

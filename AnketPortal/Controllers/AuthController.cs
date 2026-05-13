@@ -9,7 +9,7 @@ using System.Security.Claims;
 
 namespace AnketPortal.API.Controllers
 {
-    // Frontend'e listeleme için yollayacağımız DTO
+
     public class UserListDto
     {
         public string Id { get; set; }
@@ -19,7 +19,7 @@ namespace AnketPortal.API.Controllers
         public IList<string> Roles { get; set; }
     }
 
-    // Refresh Token için DTO
+
     public class RefreshTokenRequestDto
     {
         public string RefreshToken { get; set; }
@@ -40,7 +40,7 @@ namespace AnketPortal.API.Controllers
             _tokenService = tokenService;
         }
 
-        [HttpPost("Register")]  // Kayıt API'si
+        [HttpPost("Register")] 
         public async Task<IActionResult> Register(RegisterDto model)
         {
             var user = new AppUser { UserName = model.UserName, Email = model.Email, FullName = model.FullName };
@@ -57,7 +57,7 @@ namespace AnketPortal.API.Controllers
                     }
                 }
 
-                // İlk Kayıt Herkes User Olarak Başlar
+
                 await _userManager.AddToRoleAsync(user, "User");
 
                 return Ok(new ResultDto { Status = true, Message = "Kayıt Başarılı. Hesabınız standart 'User' yetkisiyle oluşturuldu." });
@@ -65,7 +65,7 @@ namespace AnketPortal.API.Controllers
             return BadRequest(new ResultDto { Status = false, Message = "Hata oluştu", Data = result.Errors });
         }
 
-        [HttpPost("Login")] // Giriş API'si
+        [HttpPost("Login")] 
         public async Task<IActionResult> Login(LoginDto model)
         {
             var user = await _userManager.FindByNameAsync(model.UserName);
@@ -73,12 +73,10 @@ namespace AnketPortal.API.Controllers
             {
                 var roles = await _userManager.GetRolesAsync(user);
 
-                // Jeton paketini oluştur (AccessToken + RefreshToken + Expiration)
                 var tokenResponse = _tokenService.GenerateToken(user, roles);
 
-                // --- ÖNEMLİ: Refresh Token bilgilerini veritabanına işle ---
                 user.RefreshToken = tokenResponse.RefreshToken;
-                user.RefreshTokenEndDate = DateTime.Now.AddDays(7); // 7 gün boyunca şifresiz yenileyebilir
+                user.RefreshTokenEndDate = DateTime.Now.AddDays(7); 
                 await _userManager.UpdateAsync(user);
 
                 return Ok(new ResultDto { Status = true, Message = "Giriş Başarılı", Data = tokenResponse });
@@ -86,7 +84,6 @@ namespace AnketPortal.API.Controllers
             return Unauthorized(new ResultDto { Status = false, Message = "Kullanıcı adı veya şifre hatalı" });
         }
 
-        // --- YENİ: KULLANICILARI LİSTELEME ---
         [Authorize(Roles = "SuperAdmin")]
         [HttpGet("GetUsers")]
         public async Task<IActionResult> GetUsers()
@@ -110,8 +107,7 @@ namespace AnketPortal.API.Controllers
             return Ok(new ResultDto { Status = true, Data = userList });
         }
 
-        // --- GÜNCELLENEN: YETKİ ATAMA (Eskisini sil, yenisini ver) ---
-        [Authorize(Roles = "SuperAdmin")] // Sadece SuperAdminler yetki değiştirebilir
+        [Authorize(Roles = "SuperAdmin")] 
         [HttpPost("AssignRole")]
         public async Task<IActionResult> AssignRole(RoleAssignDto model)
         {
@@ -120,7 +116,7 @@ namespace AnketPortal.API.Controllers
 
             var currentRoles = await _userManager.GetRolesAsync(user);
 
-            // GÜVENLİK: SuperAdmin kendi veya başka bir SuperAdmin'in yetkisini asla DÜŞÜREMEZ.
+
             if (currentRoles.Contains("SuperAdmin"))
             {
                 return BadRequest(new ResultDto { Status = false, Message = "SuperAdmin yetkisi değiştirilemez!" });
@@ -129,10 +125,10 @@ namespace AnketPortal.API.Controllers
             if (!await _roleManager.RoleExistsAsync(model.RoleName))
                 return BadRequest(new ResultDto { Status = false, Message = "Böyle bir rol sistemde yok." });
 
-            // Önce kullanıcının sahip olduğu tüm eski rolleri sil (User ve Admin çakışmasın diye)
+
             await _userManager.RemoveFromRolesAsync(user, currentRoles);
 
-            // Sonra yeni gelen tek rolü (User veya Admin) ata
+
             var result = await _userManager.AddToRoleAsync(user, model.RoleName);
 
             if (result.Succeeded)
@@ -141,14 +137,14 @@ namespace AnketPortal.API.Controllers
             return BadRequest(new ResultDto { Status = false, Message = "Yetki verilemedi.", Data = result.Errors });
         }
 
-        [HttpPost("RefreshToken")] // Jeton Yenileme API'si
+        [HttpPost("RefreshToken")] 
         public async Task<IActionResult> RefreshToken([FromBody] RefreshTokenRequestDto model)
         {
-            // model null ise veya içi boşsa
+
             if (string.IsNullOrEmpty(model?.RefreshToken))
                 return BadRequest(new ResultDto { Status = false, Message = "Refresh Token boş olamaz." });
 
-            // Veritabanında bu token'a sahip kullanıcıyı bul
+
             var user = await _userManager.Users.FirstOrDefaultAsync(u => u.RefreshToken == model.RefreshToken);
 
             if (user == null || user.RefreshTokenEndDate < DateTime.Now)
@@ -156,17 +152,17 @@ namespace AnketPortal.API.Controllers
 
             var roles = await _userManager.GetRolesAsync(user);
 
-            // Yeni token üret
+
             var tokenResponse = _tokenService.GenerateToken(user, roles);
 
-            // Veritabanını güncelle
+
             user.RefreshToken = tokenResponse.RefreshToken;
             user.RefreshTokenEndDate = DateTime.Now.AddDays(7);
             await _userManager.UpdateAsync(user);
 
             return Ok(new ResultDto { Status = true, Message = "Yenilendi", Data = tokenResponse });
         }
-        // --- PROFIL İÇİN DTO'LAR ---
+
         public class UserProfileDto
         {
             public string UserName { get; set; }
@@ -185,17 +181,15 @@ namespace AnketPortal.API.Controllers
             public string ProfilePhoto { get; set; }
         }
 
-        // --- YENİ: KULLANICI PROFİLİNİ GETİR ---
-        // --- ZIRHLI: KULLANICI PROFİLİNİ GETİR ---
+
         [Authorize]
         [HttpGet("GetProfile")]
         public async Task<IActionResult> GetProfile()
         {
-            // 1. Önce kullanıcının adından (Username) bulmayı dener
+
             var userName = User.Identity?.Name ?? User.FindFirstValue(ClaimTypes.Name) ?? User.FindFirstValue("unique_name");
             var user = await _userManager.FindByNameAsync(userName ?? "");
 
-            // 2. Bulamazsa ID'sinden bulmayı dener
             if (user == null)
             {
                 var userId = User.FindFirstValue(ClaimTypes.NameIdentifier) ?? User.FindFirstValue("sub");
@@ -209,7 +203,6 @@ namespace AnketPortal.API.Controllers
             var profile = new UserProfileDto
             {
                 UserName = user.UserName,
-                // Eğer veritabanında FullName boşsa, ekrana isimsiz çıkmasın diye UserName'i yazar
                 FullName = string.IsNullOrEmpty(user.FullName) ? user.UserName : user.FullName,
                 Email = user.Email,
                 PhoneNumber = user.PhoneNumber,
@@ -220,7 +213,6 @@ namespace AnketPortal.API.Controllers
             return Ok(new ResultDto { Status = true, Data = profile });
         }
 
-        // --- ZIRHLI: KULLANICI PROFİLİNİ GÜNCELLE ---
         [Authorize]
         [HttpPut("UpdateProfile")]
         public async Task<IActionResult> UpdateProfile([FromBody] UpdateProfileDto model)
@@ -252,6 +244,36 @@ namespace AnketPortal.API.Controllers
             }
 
             return BadRequest(new ResultDto { Status = false, Message = "Profil güncellenirken bir hata oluştu." });
+        }        [HttpPost("ForgotPassword")]
+        public async Task<IActionResult> ForgotPassword([FromBody] ForgotPasswordDto model)
+        {
+            if (string.IsNullOrEmpty(model.Email))
+                return BadRequest(new ResultDto { Status = false, Message = "E-posta adresi gereklidir." });
+
+            var user = await _userManager.FindByEmailAsync(model.Email);
+            if (user == null)
+                return Ok(new ResultDto { Status = true, Message = "Eğer sistemde kayıtlıysa, şifre sıfırlama bağlantısı e-posta adresinize gönderilmiştir." });
+
+            var token = await _userManager.GeneratePasswordResetTokenAsync(user);
+
+            return Ok(new ResultDto { Status = true, Message = "Sıfırlama bağlantısı e-posta adresinize gönderildi.", Data = token });
+        }
+
+        [HttpPost("ResetPassword")]
+        public async Task<IActionResult> ResetPassword([FromBody] ResetPasswordDto model)
+        {
+            if (string.IsNullOrEmpty(model.Email) || string.IsNullOrEmpty(model.Token) || string.IsNullOrEmpty(model.NewPassword))
+                return BadRequest(new ResultDto { Status = false, Message = "Eksik bilgi." });
+
+            var user = await _userManager.FindByEmailAsync(model.Email);
+            if (user == null)
+                return BadRequest(new ResultDto { Status = false, Message = "Kullanıcı bulunamadı." });
+
+            var result = await _userManager.ResetPasswordAsync(user, model.Token, model.NewPassword);
+            if (result.Succeeded)
+                return Ok(new ResultDto { Status = true, Message = "Şifreniz başarıyla sıfırlandı. Giriş yapabilirsiniz." });
+
+            return BadRequest(new ResultDto { Status = false, Message = string.Join(" ", result.Errors.Select(e => e.Description)) });
         }
     }
 }

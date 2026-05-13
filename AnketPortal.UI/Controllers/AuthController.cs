@@ -9,8 +9,11 @@ namespace AnketPortal.UI.Controllers
             return View();
         }
 
-        // İŞTE EKSİK OLAN KISIM BURASIYDI! BUNU EKLE:
         public IActionResult Register()
+        {
+            return View();
+        }
+        public IActionResult ForgotPassword()
         {
             return View();
         }

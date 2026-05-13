@@ -13,11 +13,11 @@ namespace AnketPortal.API.Controllers
 {
     [Route("api/[controller]")]
     [ApiController]
-    [Authorize] //Yetki Kontrolü
+    [Authorize] 
     public class AnswerController : ControllerBase
     {
         private readonly IGenericRepository<SurveyAnswer> _answerRepo;
-        private readonly IGenericRepository<Survey> _surveyRepo; //repository eklenimi
+        private readonly IGenericRepository<Survey> _surveyRepo; 
 
         public AnswerController(IGenericRepository<SurveyAnswer> answerRepo, IGenericRepository<Survey> surveyRepo)
         {
@@ -25,7 +25,7 @@ namespace AnketPortal.API.Controllers
             _surveyRepo = surveyRepo;
         }
 
-        [HttpPost("Submit")] // Cevapları Gönderme API'si
+        [HttpPost("Submit")] 
         public async Task<IActionResult> SubmitAnswers(AnswerSubmitDto model)
         {
             var userId = User.FindFirstValue(ClaimTypes.NameIdentifier);
@@ -58,7 +58,6 @@ namespace AnketPortal.API.Controllers
                     QuestionId = item.QuestionId,
                     TextAnswer = item.TextAnswer,
 
-                    // KENDİ ORİJİNAL HALİNE ÇEVİRDİK (Derleme hatası uçacak)
                     SelectedOptionId = item.SelectedOptionId,
 
                     AppUserId = userId!,
@@ -71,7 +70,7 @@ namespace AnketPortal.API.Controllers
             return Ok(new ResultDto { Status = true, Message = "Cevaplarınız başarıyla kaydedildi. Katılımınız için teşekkürler!" });
         }
 
-        //Verilen Cevapları Görme API'si
+
         [HttpGet("MyAnswers/{surveyId}")]
         public async Task<IActionResult> GetMyAnswers(int surveyId)
         {

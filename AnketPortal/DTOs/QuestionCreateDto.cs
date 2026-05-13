@@ -14,8 +14,8 @@
     {
         public string OptionText { get; set; } = string.Empty;
         public string? ImageUrl { get; set; } // Şık Foto
-        public int Order { get; set; }      // SurveyController için eklendi
-        public int QuestionId { get; set; } // SurveyController için eklendi
+        public int Order { get; set; }      
+        public int QuestionId { get; set; } 
 
         public int? NextQuestionId { get; set; }
     }

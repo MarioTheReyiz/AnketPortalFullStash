@@ -1,5 +1,4 @@
 ﻿@{
-    // Bu sayfa giriş sayfası olduğu için Master Page (Layout) kullanılmasın
     Layout = null;
 }
 
@@ -9,9 +8,7 @@
     <meta charset="utf-8" />
     <meta name="viewport" content="width=device-width, initial-scale=1.0" />
     <title>Giriş Yap - Anket Portalı</title>
-    <!-- Bootstrap 5 CSS -->
     <link href="https://cdn.jsdelivr.net/npm/bootstrap@5.3.2/dist/css/bootstrap.min.css" rel="stylesheet">
-    <!-- FontAwesome -->
     <link rel="stylesheet" href="https://cdnjs.cloudflare.com/ajax/libs/font-awesome/6.4.2/css/all.min.css">
     <style>
         body {
@@ -44,18 +41,18 @@
 
     <div class="container">
         <div class="login-card row mx-auto">
-            <!-- Sol Taraf (Resim) -->
+
             <div class="col-lg-6 d-none d-lg-block p-0">
                 <div class="login-image"></div>
             </div>
-            <!-- Sağ Taraf (Form) -->
+
             <div class="col-lg-6 p-5">
                 <div class="text-center mb-4">
                     <h1 class="h4 text-gray-900 mb-2 fw-bold"><i class="fa-solid fa-square-poll-vertical text-primary"></i> Anket Portalı</h1>
                     <p class="text-muted">Hoş geldiniz, devam etmek için giriş yapın.</p>
                 </div>
 
-                <!-- DİKKAT: Sayfa yenilenmesin diye onsubmit="return false;" ekledik! -->
+
                 <form id="frmLogin" onsubmit="return false;">
                     <div class="mb-3">
                         <label class="form-label text-muted small fw-bold">Kullanıcı Adı</label>
@@ -66,7 +63,6 @@
                         <input type="password" class="form-control form-control-user rounded-pill p-3" id="txtPassword" placeholder="Şifreniz" required>
                     </div>
 
-                    <!-- DİKKAT: Butonun tipini "button" yaptık ki asla sayfayı yenilemesin! -->
                     <button type="button" class="btn btn-primary w-100 rounded-pill p-3 fw-bold shadow-sm" id="btnSubmit">
                         <i class="fa-solid fa-right-to-bracket me-2"></i> Giriş Yap
                     </button>
@@ -74,20 +70,19 @@
 
                 <hr class="my-4">
                 <div class="text-center">
-                    <!-- BURASI GÜNCELLENDİ: Kayıt sayfasına doğru yönlendirme -->
                     <a class="small text-decoration-none fw-bold" href="/Auth/Register">Hesap Oluştur!</a>
+                </div>
+                <div class="text-center mt-2">
+                    <a class="small text-decoration-none fw-bold" href="/Auth/ForgotPassword">Şifremi Unuttum?</a>
                 </div>
             </div>
         </div>
     </div>
 
-    <!-- Jquery ve SweetAlert2 Kütüphaneleri -->
     <script src="https://code.jquery.com/jquery-3.7.1.min.js"></script>
     <script src="https://cdn.jsdelivr.net/npm/sweetalert2@11"></script>
 
-    <!-- AJAX İŞLEMLERİ -->
     <script>
-        // 1. TOKEN ÇÖZÜCÜ FONKSİYON
         function parseJwt(token) {
             try {
                 if(!token || token === "undefined" || token === "null") return null;
@@ -105,14 +100,11 @@
 
         $(document).ready(function () {
 
-            // 2. SAYFA YÜKLENDİĞİNDE: BOZUK TOKEN KONTROLÜ (Geri sekmeyi engeller)
             var existingToken = localStorage.getItem("token");
 
-            // Eğer "[object Object]" gibi bozuk bir veri kaydedilmişse hemen sil
             if (existingToken && existingToken.length < 30) {
                 localStorage.removeItem("token");
             }
-            // Eğer gerçek ve uzun bir token varsa anında yönlendir
             else if (existingToken && existingToken.length > 50) {
                 var dToken = parseJwt(existingToken);
                 if (dToken) {
@@ -126,7 +118,6 @@
                 }
             }
 
-            // 3. GİRİŞ YAP BUTONUNA TIKLANDIĞINDA
             $("#btnSubmit").click(function () {
                 var btn = $(this);
                 var userName = $("#txtUserName").val().trim();
@@ -137,7 +128,6 @@
                     return;
                 }
 
-                // Butonu Kilitler
                 btn.prop("disabled", true).html('<i class="fas fa-spinner fa-spin me-2"></i> Giriş Yapılıyor...');
 
                 $.ajax({
@@ -147,42 +137,34 @@
                     data: JSON.stringify({ UserName: userName, Password: password }),
                     success: function (res) {
 
-                        // 1. API Durumunu Kontrol Et (Büyük/Küçük harf duyarlılığı için ikisine de bakıyoruz)
                         var isSuccess = res.status === true || res.Status === true;
                         var msg = res.message || res.Message || "İşlem durumu anlaşılamadı.";
 
-                        // 2. İŞTE TOKEN AVCISI: API token'ı nerede saklıyor bulalım!
                         var jwtToken = null;
                         var rData = res.data || res.Data;
 
                         if (rData) {
                             if (typeof rData === 'string') {
-                                jwtToken = rData; // Bazen token direkt data'nın kendisi olur
+                                jwtToken = rData;
                             } else {
-                                // Token'ın farklı isimlendirmelerini ara
                                 jwtToken = rData.token || rData.Token || rData.accessToken || rData.AccessToken;
                             }
                         }
 
-                        // Belki de data nesnesi içinde değil, direkt ana nesnededir
                         if (!jwtToken) {
                             jwtToken = res.token || res.Token || res.accessToken || res.AccessToken;
                         }
 
-                        // BAŞARILI GİRİŞ (Hem API başarılı dedi, hem de Token bulunduysa)
                         if (isSuccess && jwtToken && jwtToken.length > 20) {
 
-                            // Token'ı kaydet
                             localStorage.setItem("token", jwtToken);
 
-                            // Rolü bul
                             var decodedToken = parseJwt(jwtToken);
                             var role = "User";
                             if (decodedToken) {
                                 role = decodedToken["http://schemas.microsoft.com/ws/2008/06/identity/claims/role"] || decodedToken.role || decodedToken.Role || "User";
                             }
 
-                            // YÖNLENDİR
                             Swal.fire({
                                 icon: 'success',
                                 title: 'Giriş Başarılı!',
@@ -198,7 +180,6 @@
                             });
 
                         }
-                        // APİ BAŞARILI DEDİ AMA TOKEN GELMEDİ (GİZEMİ ÇÖZECEK KISIM)
                         else if (isSuccess && !jwtToken) {
                             Swal.fire({
                                 icon: 'error',
@@ -208,7 +189,6 @@
                             console.log("Token Bulunamadı! API'den gelen tam yanıt:", res);
                             btn.prop("disabled", false).html('<i class="fa-solid fa-right-to-bracket me-2"></i> Giriş Yap');
                         }
-                        // ŞİFRE YANLIŞ VEYA NORMAL HATA DURUMU
                         else {
                             Swal.fire('Hata', msg, 'error');
                             btn.prop("disabled", false).html('<i class="fa-solid fa-right-to-bracket me-2"></i> Giriş Yap');
@@ -228,7 +208,6 @@
                 });
             });
 
-            // Şifre kutusunda Enter'a basıldığında da tetiklensin
             $("#txtPassword").keypress(function (e) {
                 if (e.which == 13) $("#btnSubmit").click();
             });

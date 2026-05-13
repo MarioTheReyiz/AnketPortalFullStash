@@ -37,7 +37,6 @@ namespace AnketPortal.API.Controllers
                         OptionText = opt.OptionText,
                         ImageUrl = opt.ImageUrl,
                         Order = question.Options.Count + 1,
-                        // VERİTABANINA HEDEF SORUYU KAYDET
                         NextQuestionId = opt.NextQuestionId
                     });
                 }
@@ -66,7 +65,6 @@ namespace AnketPortal.API.Controllers
                         OptionText = o.OptionText,
                         ImageUrl = o.ImageUrl,
                         Order = o.Order,
-                        // ÇÖZME EKRANINA HEDEF SORUYU GÖNDER
                         NextQuestionId = o.NextQuestionId
                     }).OrderBy(o => o.Order).ToList()
                 }).ToListAsync();
@@ -89,13 +87,25 @@ namespace AnketPortal.API.Controllers
         [HttpPut("UpdateQuestion")]
         public async Task<IActionResult> UpdateQuestion(QuestionDto model)
         {
-            var question = await _context.Questions.Include(q => q.Options).FirstOrDefaultAsync(x => x.Id == model.Id);
-            if (question == null) return NotFound(new ResultDto { Status = false, Message = "Soru bulunamadı." });
+            var question = await _context.Questions
+                .Include(q => q.Options)
+                .FirstOrDefaultAsync(x => x.Id == model.Id);
 
-            question.Text = model.Text;
-            question.IsRequired = model.IsRequired;
-            question.Type = (AnketPortal.API.Models.Enums.QuestionType)model.Type;
-            question.MediaUrl = model.MediaUrl; // URL Güncellemesi de eksikti eklendi.
+            if (question == null)
+                return NotFound(new ResultDto { Status = false, Message = "Soru bulunamadı." });
+
+            var optionIdsToDelete = question.Options.Select(o => o.Id).ToList();
+            if (optionIdsToDelete.Any())
+            {
+                var relatedAnswers = await _context.SurveyAnswers
+                    .Where(a => a.SelectedOptionId != null && optionIdsToDelete.Contains(a.SelectedOptionId.Value))
+                    .ToListAsync();
+
+                foreach (var ans in relatedAnswers)
+                {
+                    ans.SelectedOptionId = null;
+                }
+            }
 
             _context.QuestionOptions.RemoveRange(question.Options);
 
@@ -106,13 +116,17 @@ namespace AnketPortal.API.Controllers
                     question.Options.Add(new QuestionOption
                     {
                         OptionText = opt.OptionText,
-                        ImageUrl = opt.ImageUrl, // Güncellerken görsel silinme hatası düzeltildi
+                        ImageUrl = opt.ImageUrl,
                         Order = opt.Order,
-                        // GÜNCELLERKEN HEDEF SORUYU KAYDET
                         NextQuestionId = opt.NextQuestionId
                     });
                 }
             }
+
+            question.Text = model.Text;
+            question.IsRequired = model.IsRequired;
+            question.Type = (QuestionType)model.Type;
+            question.MediaUrl = model.MediaUrl;
 
             await _context.SaveChangesAsync();
             return Ok(new ResultDto { Status = true, Message = "Soru başarıyla güncellendi." });

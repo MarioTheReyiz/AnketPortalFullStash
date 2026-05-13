@@ -18,7 +18,6 @@
         public string OptionText { get; set; } = string.Empty;
         public int Order { get; set; }
 
-        // AKILLI ATLAMA (SKIP LOGIC) İÇİN EKLENEN ALAN
         public int? NextQuestionId { get; set; }
     }
 }

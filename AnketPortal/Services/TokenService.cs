@@ -19,7 +19,6 @@ namespace AnketPortal.API.Repositories
             var jwtSettings = _configuration.GetSection("Jwt");
             var key = new SymmetricSecurityKey(Encoding.UTF8.GetBytes(jwtSettings["Key"]!));
 
-            // Jetonun içindeki bilgiler (Claims)
             var claims = new List<Claim>
             {
                 new Claim(JwtRegisteredClaimNames.Sub, user.Id),
@@ -33,7 +32,6 @@ namespace AnketPortal.API.Repositories
                 claims.Add(new Claim(ClaimTypes.Role, role));
             }
 
-            // Ana Token Ayarları (AccessToken)
             var expiration = DateTime.UtcNow.AddMinutes(Convert.ToDouble(jwtSettings["DurationInMinutes"]));
 
             var tokenDescriptor = new SecurityTokenDescriptor
@@ -48,8 +46,6 @@ namespace AnketPortal.API.Repositories
             var tokenHandler = new JwtSecurityTokenHandler();
             var token = tokenHandler.CreateToken(tokenDescriptor);
 
-            // --- REFRESH TOKEN ÜRETİMİ ---
-            // Tahmin edilemez, güvenli ve benzersiz bir Refresh Token oluşturuyoruz
             var refreshToken = GenerateRefreshToken();
 
             return new TokenResponseDto
@@ -60,7 +56,6 @@ namespace AnketPortal.API.Repositories
             };
         }
 
-        // Rastgele 32 karakterlik güvenli bir Refresh Token üretir
         private string GenerateRefreshToken()
         {
             var randomNumber = new byte[32];

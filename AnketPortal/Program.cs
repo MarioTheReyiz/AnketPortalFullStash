@@ -11,11 +11,9 @@ using AnketPortal.API.Services;
 
 var builder = WebApplication.CreateBuilder(args);
 
-// --- 1. Veritabaný Baðlantýsý ---
 builder.Services.AddDbContext<AppDbContext>(options =>
     options.UseSqlServer(builder.Configuration.GetConnectionString("DefaultConnection")));
 
-// --- 2. Identity Ayarlarý ---
 builder.Services.AddIdentity<AppUser, AppRole>(options =>
 {
     options.Password.RequireNonAlphanumeric = false;
@@ -26,7 +24,6 @@ builder.Services.AddIdentity<AppUser, AppRole>(options =>
 .AddEntityFrameworkStores<AppDbContext>()
 .AddDefaultTokenProviders();
 
-// --- 3. JWT ve Authentication ---
 var jwtSettings = builder.Configuration.GetSection("Jwt");
 var key = Encoding.UTF8.GetBytes(jwtSettings["Key"]!);
 
@@ -50,17 +47,13 @@ builder.Services.AddAuthentication(options =>
     };
 });
 
-// --- 4. Baðýmlýlýk Enjeksiyonlarý (DI) ---
 builder.Services.AddScoped(typeof(IGenericRepository<>), typeof(GenericRepository<>));
 builder.Services.AddScoped<ITokenService, TokenService>();
-// Program.cs içerisine eklenecek olan kýsým:
 builder.Services.AddControllers().AddJsonOptions(x =>
 {
-    // JSON Döngü Hatasýný Engeller (Reference Looping)
     x.JsonSerializerOptions.ReferenceHandler = System.Text.Json.Serialization.ReferenceHandler.IgnoreCycles;
 });
 
-// --- 5. CORS AYARLARI (ÖNEMLÝ: Politika burada tanýmlanýr) ---
 builder.Services.AddCors(options =>
 {
     options.AddPolicy("AllowAll", policy =>
@@ -73,7 +66,7 @@ builder.Services.AddCors(options =>
 
 builder.Services.AddEndpointsApiExplorer();
 
-// --- 6. Swagger Ayarlarý ---
+
 builder.Services.AddSwaggerGen(options =>
 {
     options.SwaggerDoc("v1", new OpenApiInfo { Title = "Anket Portal API", Version = "v1" });
@@ -104,11 +97,6 @@ builder.Services.AddSwaggerGen(options =>
     });
 });
 
-// =================================================================
-// PÝPELINE (MÝDDLEWARE) SIRALAMASI - BURASI ÇOK ÖNEMLÝ
-// =================================================================
-
-// Arka plan servisimizi sisteme kaydediyoruz
 builder.Services.AddHostedService<AnketPortal.Services.SurveyStatusUpdateService>();
 
 
@@ -122,24 +110,17 @@ if (app.Environment.IsDevelopment())
 
 app.UseHttpsRedirection();
 
-// 1. Önce Routing (Yönlendirme) çalýþmalý! (Bunu unutmuþtuk)
 app.UseRouting();
 
-// 2. Routing'den hemen sonra CORS devreye girmeli!
 app.UseCors("AllowAll");
 
-// 3. Kimlik Doðrulama (Cors'tan sonra gelmeli)
 app.UseAuthentication();
 
-// 4. Yetkilendirme
 app.UseAuthorization();
 
-// 5. Controller'larý Eþle
 app.MapControllers();
 
-// =================================================================
-// OTO ADMÝN (VERÝ TOHUMLAMA)
-// =================================================================
+
 using (var scope = app.Services.CreateScope())
 {
     var services = scope.ServiceProvider;
@@ -148,7 +129,6 @@ using (var scope = app.Services.CreateScope())
         var userManager = services.GetRequiredService<UserManager<AppUser>>();
         var roleManager = services.GetRequiredService<RoleManager<AppRole>>();
 
-        // Temel roller
         string[] roleNames = { "SuperAdmin", "Admin", "User" };
         foreach (var roleName in roleNames)
         {
@@ -158,7 +138,6 @@ using (var scope = app.Services.CreateScope())
             }
         }
 
-        // Otomatik Kurucu hesabý 
         string adminEmail = "kurucu@anketportal.com";
         var adminUser = await userManager.FindByEmailAsync(adminEmail);
 

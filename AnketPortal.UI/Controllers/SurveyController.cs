@@ -10,21 +10,21 @@ namespace AnketPortal.UI.Controllers
         }
         public IActionResult Detail(int id)
         {
-            ViewBag.SurveyId = id; // Anket ID'sini sayfaya taşıyoruz
+            ViewBag.SurveyId = id; 
             return View();
         }
-        // Sonuçları Grafiklerle Gösterme Sayfası
+
         public IActionResult Results(int id)
         {
-            ViewBag.SurveyId = id; // API'ye istek atarken URL'deki ID'yi kullanmak için ViewBag ile sayfaya yolluyoruz
+            ViewBag.SurveyId = id; 
             return View();
-        }// Kullanıcıların anketi çözdüğü sayfa (User Side)
+        }
         [HttpGet]
-        public IActionResult Solve(int id) // URL'den gelen id (Örn: /Survey/Solve/2)
+        public IActionResult Solve(int id) 
         {
             if (id == 0) return RedirectToAction("Surveys", "Home");
 
-            ViewBag.SurveyId = id; // BU SATIR ÇOK ÖNEMLİ!
+            ViewBag.SurveyId = id; 
             return View();
         }
 

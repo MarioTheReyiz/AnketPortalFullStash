@@ -84,7 +84,7 @@
             <a href="/Home/Index" class="btn btn-link text-decoration-none fw-bold text-secondary me-2"><i class="fa-solid fa-house me-1"></i> Ana Sayfa</a>
             <a href="/Home/Surveys" class="btn btn-link text-decoration-none fw-bold text-secondary"><i class="fa-solid fa-list-check me-1"></i> Tüm Anketler</a>
 
-            <!-- ADMIN MENU (SADECE ADMIN GÖRÜR) YENİ! -->
+            <!-- ADMIN MENU (SADECE ADMIN GÖRÜR) -->
             <span id="adminMenu" style="display:none;" class="ms-3 border-start ps-3">
                 <a href="/Survey/Index" class="btn btn-link text-decoration-none fw-bold text-primary"><i class="fa-solid fa-gear me-1"></i> Anket Yönetimi</a>
                 <a href="/Home/Reviews" class="btn btn-link text-decoration-none fw-bold text-warning"><i class="fa-solid fa-star me-1"></i> Değerlendirmeler</a>
@@ -97,28 +97,13 @@
             </span>
         </div>
 
-        <!-- SAĞ KISIM: PROFİL, BİLDİRİM, DARK MODE -->
+        <!-- SAĞ KISIM -->
         <div class="d-flex align-items-center">
 
-            <!-- Admin bu sayfaya gelirse Paneline dönebilsin diye tuş -->
+            <!-- Admin bu sayfaya gelirse Paneline dönebilsin -->
             <a href="/Home/Dashboard" id="btnSwitchToAdmin" class="btn btn-sm btn-warning text-dark fw-bold rounded-pill shadow-sm me-3 px-3" style="display:none;">
                 <i class="fa-solid fa-gauge-high me-1"></i> Dashboard
             </a>
-
-            <!-- BİLDİRİM ÇANI -->
-            <div class="dropdown me-3">
-                <button class="btn btn-sm btn-outline-secondary rounded-circle position-relative border-0" type="button" data-bs-toggle="dropdown">
-                    <i class="fa-solid fa-bell fs-5 text-gray-800"></i>
-                    <span class="position-absolute top-0 start-100 translate-middle badge rounded-pill bg-danger border border-light" style="font-size: 0.60rem; padding: 0.25em 0.4em; display:none;" id="notificationCount">0</span>
-                </button>
-                <ul class="dropdown-menu dropdown-menu-end shadow border-0 mt-2" style="width: 300px;">
-                    <li class="dropdown-header bg-primary text-white fw-bold py-2 rounded-top">Bildirim Merkezi</li>
-                    <div id="notificationList" style="max-height: 300px; overflow-y: auto;">
-                        <div class="text-center py-3 text-muted"><i class="fas fa-spinner fa-spin"></i> Yükleniyor...</div>
-                    </div>
-                    <li><a class="dropdown-item text-center small text-muted bg-light py-2 fw-bold" href="#" id="btnReadAll"><i class="fa-solid fa-check-double me-1"></i> Tümünü Okundu İşaretle</a></li>
-                </ul>
-            </div>
 
             <!-- DARK MODE -->
             <button id="btnDarkModeToggle" class="btn btn-sm btn-outline-secondary rounded-circle me-3 border-0">
@@ -171,17 +156,15 @@
             if (!token) { window.location.href = "/Auth/Login"; return; }
 
             var decodedToken = parseJwt(token);
-            if(decodedToken) {
+            if (decodedToken) {
                 var userRole = decodedToken["http://schemas.microsoft.com/ws/2008/06/identity/claims/role"] || decodedToken.role || decodedToken.Role || "User";
                 $("#lblUserRole").text(userRole);
 
-                // Adminse menüleri göster
-                if(userRole === "Admin" || userRole === "SuperAdmin") {
+                if (userRole === "Admin" || userRole === "SuperAdmin") {
                     $("#lblUserRole").removeClass("bg-primary").addClass("bg-danger");
                     $("#btnSwitchToAdmin").show();
-                    $("#adminMenu").show(); // Yönetim linkleri açıldı
+                    $("#adminMenu").show();
                 }
-
                 if (userRole === "SuperAdmin") {
                     $("#superAdminMenu").show();
                 }
@@ -193,44 +176,27 @@
                 // Profil Çekme
                 $.ajax({
                     url: "https://localhost:7094/api/Auth/GetProfile", type: "GET", headers: { "Authorization": "Bearer " + token },
-                    success: function(res) {
+                    success: function (res) {
                         if (res.status && res.data) {
-                            if(res.data.userName) $("#lblUserName").text(res.data.userName.toUpperCase());
-                            if(res.data.profilePhoto && res.data.profilePhoto.length > 50) $("#imgUserAvatar").attr("src", res.data.profilePhoto);
+                            if (res.data.userName) $("#lblUserName").text(res.data.userName.toUpperCase());
+                            if (res.data.profilePhoto && res.data.profilePhoto.length > 50) $("#imgUserAvatar").attr("src", res.data.profilePhoto);
                             else $("#imgUserAvatar").attr("src", "https://ui-avatars.com/api/?name=" + (res.data.userName || "U").charAt(0).toUpperCase() + "&background=4e73df&color=fff&bold=true");
                         }
                     },
-                    error: function(xhr) { if(xhr.status === 401) { localStorage.removeItem("token"); window.location.href = "/Auth/Login"; } }
+                    error: function (xhr) { if (xhr.status === 401) { localStorage.removeItem("token"); window.location.href = "/Auth/Login"; } }
                 });
 
-                // Bildirimleri Çekme
-                $.ajax({
-                    url: "https://localhost:7094/api/Survey/GetNotifications", type: "GET", headers: { "Authorization": "Bearer " + token },
-                    success: function(res) {
-                        if (res.status && res.data) {
-                            var notifs = res.data;
-                            var readCount = parseInt(localStorage.getItem("readNotifCount")) || 0;
-                            var unreadCount = notifs.length - readCount;
-
-                            if (unreadCount > 0) $("#notificationCount").text(unreadCount).show(); else $("#notificationCount").hide();
-
-                            var html = "";
-                            if(notifs.length === 0) html = '<li><span class="dropdown-item text-center text-muted py-3">Yeni bildiriminiz yok.</span></li>';
-                            else notifs.forEach(function(n) { html += `<li><a class="dropdown-item d-flex align-items-center py-3 border-bottom" href="#"><div class="me-3"><div class="${n.color} rounded-circle d-flex align-items-center justify-content-center text-white" style="width: 40px; height: 40px;"><i class="fa-solid ${n.icon}"></i></div></div><div><div class="small text-muted">${n.time}</div><span class="text-dark text-wrap fw-bold" style="font-size: 0.85rem;">${n.message}</span></div></a></li>`; });
-
-                            $("#notificationList").html(html);
-
-                            $("#btnReadAll").click(function(e) {
-                                e.preventDefault(); localStorage.setItem("readNotifCount", notifs.length); $("#notificationCount").fadeOut();
-                            });
-                        }
-                    }
-                });
+                // Bildirim çanı bu layout'ta yoktur.
+                // Normal kullanıcılar (User rolü) bildirimlere erişemez.
+                // Bildirim sistemi yalnızca _Layout.cshtml (admin paneli) üzerinde çalışır.
+                // API tarafında GetNotifications endpoint'i [Authorize(Roles="Admin,SuperAdmin")] ile korunmaktadır.
             }
 
-            $("#btnLogout").click(function(e) {
+            $("#btnLogout").click(function (e) {
                 e.preventDefault();
-                Swal.fire({ title: 'Çıkış Yapılıyor', text: "Emin misiniz?", icon: 'warning', showCancelButton: true, confirmButtonText: 'Evet', cancelButtonText: 'İptal'
+                Swal.fire({
+                    title: 'Çıkış Yapılıyor', text: "Emin misiniz?", icon: 'warning',
+                    showCancelButton: true, confirmButtonText: 'Evet', cancelButtonText: 'İptal'
                 }).then((result) => { if (result.isConfirmed) { localStorage.clear(); window.location.href = "/Auth/Login"; } });
             });
         });

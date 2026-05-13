@@ -22,39 +22,32 @@ namespace AnketPortal.Services
 
         protected override async Task ExecuteAsync(CancellationToken stoppingToken)
         {
-            // Servis durdurulana kadar sonsuz bir döngüde çalışır
+
             while (!stoppingToken.IsCancellationRequested)
             {
                 using (var scope = _serviceProvider.CreateScope())
                 {
-                    // Arka planda çalıştığımız için DbContext'i özel olarak scope içinden çağırıyoruz
+
                     var dbContext = scope.ServiceProvider.GetRequiredService<AppDbContext>();
 
-                    // SİHİRLİ SORGUMUZ: 
-                    // 1. Anket Aktif mi?
-                    // 2. Bitiş tarihi (EndDate) var mı?
-                    // 3. Bitiş tarihi şu anki zamandan (DateTime.Now) daha mı eski?
                     var expiredSurveys = dbContext.Surveys
                         .Where(s => s.IsActive == true && s.EndDate != DateTime.MinValue && s.EndDate < DateTime.Now)
                         .ToList();
 
-                    // Eğer süresi geçen anket bulduysa
                     if (expiredSurveys.Any())
                     {
                         foreach (var survey in expiredSurveys)
                         {
-                            survey.IsActive = false; // Acımadan pasife çekiyoruz!
+                            survey.IsActive = false; 
                         }
 
-                        // Değişiklikleri veritabanına kaydet
+
                         await dbContext.SaveChangesAsync(stoppingToken);
 
-                        // Konsolda görmek istersen:
                         Console.WriteLine($"{expiredSurveys.Count} adet anket pasife alındı.");
                     }
                 }
 
-                // BEKLEME SÜRESİ: 10 Saniyede bir kontrol et
                 await Task.Delay(TimeSpan.FromSeconds(10), stoppingToken);
             }
         }

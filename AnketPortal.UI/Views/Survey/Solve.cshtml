@@ -267,7 +267,7 @@
                     if (skipTargetId && skipTargetId !== "null" && skipTargetId !== "") {
 
                         // O ID'ye sahip sorunun dizideki GERÇEK sırasını (index) bul
-                        var targetIdx = questions.findIndex(q => q.id == skipTargetId);
+                        var targetIdx = questions.findIndex(q => (q.id || q.Id) == skipTargetId);
 
                         if (targetIdx !== -1) {
                             nextTargetIndex = targetIdx; // Atlanacak sorunun sırasına git
